@@ -89,6 +89,7 @@ abstract class BaseNotify extends Notification
 
         $result = [];
 
+        // mail is silently skipped when the notifiable has no email property
         if (in_array('mail', $channels) && !empty($notifiable->email)) {
             $result[] = 'mail';
         }
@@ -103,7 +104,7 @@ abstract class BaseNotify extends Notification
 
         // Додаткові канали (telegram, sms тощо) — через трейт у конкретному класі, який викликає parent::via().
 
-        $result = $result ?: config('notifytemplates.default_channels', ['mail']);
+        $result = $result ?: config('notify-templates.default_channels', ['mail']);
 
         if ($this->onlyChannels) {
             $result = array_values(array_intersect($result, $this->onlyChannels));

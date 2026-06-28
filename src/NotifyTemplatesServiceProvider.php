@@ -11,7 +11,7 @@ class NotifyTemplatesServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->mergeConfigFrom(__DIR__.'/../config/notifytemplates.php', 'notifytemplates');
+        $this->mergeConfigFrom(__DIR__.'/../config/notify-templates.php', 'notify-templates');
 
         $this->app->singleton(NotifyTemplatesManager::class, fn() => new NotifyTemplatesManager());
     }
@@ -19,8 +19,8 @@ class NotifyTemplatesServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->publishes([
-            __DIR__.'/../config/notifytemplates.php' => config_path('notifytemplates.php'),
-        ], 'notifytemplates-config');
+            __DIR__.'/../config/notify-templates.php' => config_path('notify-templates.php'),
+        ], 'notify-templates-config');
 
         $this->commands([MakeNotifyCommand::class]);
 
@@ -28,11 +28,11 @@ class NotifyTemplatesServiceProvider extends ServiceProvider
 
         $manager = $this->app->make(NotifyTemplatesManager::class);
 
-        foreach (config('notifytemplates.discover', []) as $path) {
+        foreach (config('notify-templates.discover', []) as $path) {
             $manager->discoverIn($path);
         }
 
-        $configTypes = config('notifytemplates.types', []);
+        $configTypes = config('notify-templates.types', []);
         if ($configTypes) {
             $manager->registerTypes($configTypes);
         }
@@ -47,7 +47,7 @@ class NotifyTemplatesServiceProvider extends ServiceProvider
                 __DIR__."/../database/migrations/{$migration}.php.stub" => database_path(
                     'migrations/'.date('Y_m_d_His')."_{$migration}.php"
                 ),
-            ], 'notifytemplates-migrations');
+            ], 'notify-templates-migrations');
         }
     }
 }

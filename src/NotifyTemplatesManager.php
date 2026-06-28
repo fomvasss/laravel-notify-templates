@@ -23,6 +23,10 @@ class NotifyTemplatesManager
      */
     public function registerType(array $type): void
     {
+        if (empty($type['key'])) {
+            throw new \InvalidArgumentException('Notify type must have a non-empty "key".');
+        }
+
         $this->types[$type['key']] = $type;
     }
 
@@ -36,8 +40,20 @@ class NotifyTemplatesManager
 
     public function discoverIn(string $path): void
     {
-        foreach (glob(rtrim($path, '/') . '/*.php') as $file) {
-            $class = $this->classFromFile($file);
+        if (!is_dir($path)) {
+            return;
+        }
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($path, \RecursiveDirectoryIterator::SKIP_DOTS)
+        );
+
+        foreach ($iterator as $file) {
+            if ($file->getExtension() !== 'php') {
+                continue;
+            }
+
+            $class = $this->classFromFile($file->getPathname());
 
             if (!$class || !class_exists($class) || !is_subclass_of($class, BaseNotify::class)) {
                 continue;
@@ -81,6 +97,19 @@ class NotifyTemplatesManager
         return $this->types[$key] ?? null;
     }
 
+    /**
+     * Channels supported by a notify type.
+     * Falls back to config('notify-templates.channels') if not defined in typeDefinition.
+     *
+     * @return array<string>
+     */
+    public function getTypeChannels(string $notifyKey): array
+    {
+        $type = $this->getType($notifyKey);
+
+        return $type['channels'] ?? config('notify-templates.channels', []);
+    }
+
     // -------------------------------------------------------------------------
     // Template resolution
     // -------------------------------------------------------------------------
@@ -95,7 +124,7 @@ class NotifyTemplatesManager
         ?string $tenantId = null,
     ): ?NotifyTemplate {
         /** @var class-string<NotifyTemplate> $class */
-        $class = config('notifytemplates.models.notify_template', NotifyTemplate::class);
+        $class = config('notify-templates.models.notify_template', NotifyTemplate::class);
 
         return $class::resolve($notifyKey, $channel, $roleKey, $tenantId);
     }
@@ -122,7 +151,7 @@ class NotifyTemplatesManager
             return [];
         }
 
-        $channels = $subscription->channels ?: config('notifytemplates.default_channels', ['mail']);
+        $channels = $subscription->channels ?: config('notify-templates.default_channels', ['mail']);
 
         if ($userChannels) {
             return array_values(array_intersect($channels, $userChannels));

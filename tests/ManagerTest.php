@@ -72,11 +72,44 @@ class ManagerTest extends TestCase
         $this->assertSame('test', $type['group']);
     }
 
-    public function test_discover_in_ignores_non_php_files(): void
+    public function test_discover_in_finds_nested_class(): void
     {
-        // no exception should be thrown on an empty or non-existent path
+        $this->manager->discoverIn(__DIR__ . '/Fixtures');
+
+        $this->assertNotNull($this->manager->getType('NestedEvent'));
+    }
+
+    public function test_discover_in_ignores_nonexistent_path(): void
+    {
         $this->manager->discoverIn('/tmp/nonexistent-notify-dir');
 
         $this->assertCount(0, $this->manager->getTypes());
+    }
+
+    public function test_register_type_throws_on_missing_key(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->manager->registerType(['name' => 'No key here', 'group' => 'test']);
+    }
+
+    public function test_get_type_channels_from_definition(): void
+    {
+        $this->manager->registerType([
+            'key' => 'OrderOrdered',
+            'name' => 'Замовлення',
+            'group' => 'order',
+            'channels' => ['mail', 'sms'],
+        ]);
+
+        $this->assertSame(['mail', 'sms'], $this->manager->getTypeChannels('OrderOrdered'));
+    }
+
+    public function test_get_type_channels_falls_back_to_config(): void
+    {
+        $this->manager->registerType(['key' => 'OrderOrdered', 'name' => 'Замовлення', 'group' => 'order']);
+        config(['notify-templates.channels' => ['mail', 'telegram']]);
+
+        $this->assertSame(['mail', 'telegram'], $this->manager->getTypeChannels('OrderOrdered'));
     }
 }

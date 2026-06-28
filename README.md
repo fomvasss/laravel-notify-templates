@@ -2,6 +2,8 @@
 
 DB-based notification templates for Laravel. Manages notification templates, role/user subscriptions, channel resolution, and delay — without coupling to any specific role package.
 
+> Українська: [README.uk.md](README.uk.md)
+
 ## Concepts
 
 - **`notify_templates`** — stores subject/body per notify type + channel slot + role + tenant, with fallback chain
@@ -20,21 +22,21 @@ composer require fomvasss/laravel-notify-templates
 Publish and run migrations:
 
 ```bash
-php artisan vendor:publish --tag=notifytemplates-migrations
+php artisan vendor:publish --tag=notify-templates-migrations
 php artisan migrate
 ```
 
 Publish config (optional):
 
 ```bash
-php artisan vendor:publish --tag=notifytemplates-config
+php artisan vendor:publish --tag=notify-templates-config
 ```
 
 ---
 
 ## Configuration
 
-`config/notifytemplates.php`:
+`config/notify-templates.php`:
 
 ```php
 return [
@@ -43,7 +45,9 @@ return [
         'notify_role_subscriptions' => 'notify_role_subscriptions',
     ],
 
-    // Delivery channels available in the project
+    // All delivery channels available in the project.
+    // Used as UI listing and as fallback when typeDefinition()['channels'] is empty.
+    // Include only channels actually wired up in the app.
     'channels' => ['mail', 'telegram', 'sms', 'database', 'broadcast'],
 
     // Fallback channels when subscription has no channels configured,
@@ -80,11 +84,12 @@ By default the package scans `app/Notifications` on every boot — no code neede
 ```php
 'discover' => [
     app_path('Notifications'),
-    app_path('Notifications/Shop'), // add more directories as needed
 ],
 ```
 
-Set to `[]` to disable. The package discovers all classes that extend `BaseNotify` and return a non-empty `typeDefinition()`. Safe in production — types are registered once on boot, the singleton is read-only during requests.
+Scanning is **recursive** — subdirectories like `Notifications/Order/`, `Notifications/User/` are included automatically. Set to `[]` to disable.
+
+The package discovers all classes that extend `BaseNotify` and return a non-empty `typeDefinition()`. Safe in production — types are registered once on boot, the singleton is read-only during requests.
 
 Manual call is also available:
 
@@ -144,6 +149,7 @@ Or statically via config:
 | `desc` | string | Optional description shown as tooltip in the UI table |
 | `settings` | array | Option keys editable in the admin UI, stored in `notify_role_subscriptions.options` |
 | `tokens` | array | Token hints for the template editor: `[['key' => '[order:number]', 'name' => 'Номер']]` |
+| `channels` | array | Channels this notify type supports. Empty (default) — falls back to `config('notify-templates.channels')` |
 | `defaults` | array | Default subject/body per channel slot, used as placeholder in the editor when no DB template exists |
 
 `tokens` and `defaults` are UI metadata — the package does not use them for sending. `getBodyDefault()` / `getSubjectDefault()` on `BaseNotify` read from `defaults.mail` automatically. Keep them in sync.
@@ -229,7 +235,7 @@ class AppNotifyRoleResolver implements NotifyRoleResolverInterface
 {
     public function resolveUsersForNotify(string $notifyKey, mixed $context = null): array
     {
-        $tenantId = config('notifytemplates.tenant_id');
+        $tenantId = config('notify-templates.tenant_id');
         $tenantId = is_callable($tenantId) ? $tenantId() : $tenantId;
 
         $subscriptions = NotifyRoleSubscription::query()
@@ -419,6 +425,9 @@ NotifyTemplates::registerType(array $type): void
 NotifyTemplates::registerTypes(array $types): void
 NotifyTemplates::getTypes(?string $group = null): array
 NotifyTemplates::getType(string $key): ?array
+
+// Channels supported by a notify type (from typeDefinition or config fallback)
+NotifyTemplates::getTypeChannels(string $notifyKey): array
 
 // Template resolution (8-level fallback chain)
 NotifyTemplates::resolveTemplate(string $notifyKey, string $channel, ?string $roleKey, ?string $tenantId): ?NotifyTemplate

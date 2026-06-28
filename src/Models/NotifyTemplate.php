@@ -16,7 +16,7 @@ class NotifyTemplate extends Model
 
     public function getTable(): string
     {
-        return config('notifytemplates.tables.notify_templates', 'notify_templates');
+        return config('notify-templates.tables.notify_templates', 'notify_templates');
     }
 
     /**

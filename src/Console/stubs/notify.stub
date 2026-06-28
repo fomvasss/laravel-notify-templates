@@ -29,6 +29,7 @@ final class {{ class }} extends BaseNotify implements ShouldQueue
             'name' => '',
             'group' => '',
             'weight' => 0,
+            'channels' => [], // override available channels; empty = use config('notify-templates.channels')
             'settings' => [],
             'tokens' => [],
             'defaults' => [

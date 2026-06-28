@@ -42,7 +42,7 @@ class ResolveChannelsTest extends TestCase
     public function test_returns_default_channels_when_subscription_has_no_channels(): void
     {
         $this->sub(['channels' => []]);
-        config(['notifytemplates.default_channels' => ['mail', 'sms']]);
+        config(['notify-templates.default_channels' => ['mail', 'sms']]);
 
         $result = $this->manager->resolveChannels('OrderOrdered', 'client');
 

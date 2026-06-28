@@ -20,7 +20,7 @@ class NotifyRoleSubscription extends Model
 
     public function getTable(): string
     {
-        return config('notifytemplates.tables.notify_role_subscriptions', 'notify_role_subscriptions');
+        return config('notify-templates.tables.notify_role_subscriptions', 'notify_role_subscriptions');
     }
 
     public function scopeActive(Builder $query): void
