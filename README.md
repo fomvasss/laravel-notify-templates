@@ -151,7 +151,6 @@ Or statically via config:
 | `tokens` | array | Token hints for the template editor: `[['key' => '[order:number]', 'name' => 'Номер']]` |
 | `channels` | array | Channels this notify type supports. Empty (default) — falls back to `config('notify-templates.channels')` |
 | `defaults` | array | Default subject/body per channel slot, used as placeholder in the editor when no DB template exists |
-| `system` | bool | Marks the type as always-on (e.g. OTP, password reset). The host app UI should hide the active toggle for these types and never block sending based on subscription status |
 
 `tokens` and `defaults` are UI metadata — the package does not use them for sending. `getBodyDefault()` / `getSubjectDefault()` on `BaseNotify` read from `defaults.mail` automatically. Keep them in sync.
 
