@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -21,12 +22,13 @@ return new class extends Migration
             $table->longText('body')->nullable();
             $table->json('options')->nullable();
             $table->timestamps();
-
-            $table->index(['notify_key', 'channel', 'role_key', 'tenant_id'], 'nt_lookup');
         });
-        
-        // Then override the model via config('notifytemplates.models.notify_template').
 
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement("CREATE UNIQUE INDEX nt_lookup ON notify_templates (notify_key, COALESCE(channel, ''), COALESCE(role_key, ''), COALESCE(tenant_id, ''))");
+        } else {
+            DB::statement("CREATE UNIQUE INDEX nt_lookup ON notify_templates (notify_key, (COALESCE(channel, '')), (COALESCE(role_key, '')), (COALESCE(tenant_id, '')))");
+        }
 
         Schema::create('notify_role_subscriptions', function (Blueprint $table) {
             $table->id();
@@ -41,9 +43,13 @@ return new class extends Migration
             $table->json('channels')->nullable();
             $table->json('options')->nullable();
             $table->timestamps();
-
-            $table->unique(['role_key', 'notify_key', 'tenant_id'], 'nrs_unique');
         });
+
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement("CREATE UNIQUE INDEX nrs_unique ON notify_role_subscriptions (role_key, notify_key, COALESCE(tenant_id, ''))");
+        } else {
+            DB::statement("CREATE UNIQUE INDEX nrs_unique ON notify_role_subscriptions (role_key, notify_key, (COALESCE(tenant_id, '')))");
+        }
 
         // To enable multilingual subject/body via astrotomic/laravel-translatable,
         // create a separate translations table (subject/body above can stay as fallback):
@@ -56,7 +62,6 @@ return new class extends Migration
         //     $table->longText('body')->nullable();
         //     $table->unique(['notify_template_id', 'locale']);
         // });
-        //
     }
 
     public function down(): void
