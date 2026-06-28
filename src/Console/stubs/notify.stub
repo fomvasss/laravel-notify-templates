@@ -1,0 +1,40 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ namespace }};
+
+use Fomvasss\NotifyTemplates\Notifications\BaseNotify;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+
+final class {{ class }} extends BaseNotify implements ShouldQueue
+{
+    use Queueable;
+
+    public function __construct(protected string $roleKey)
+    {
+        //
+    }
+
+    protected function prepareText(string $text, mixed $notifiable): string
+    {
+        return $text;
+    }
+
+    public static function typeDefinition(): array
+    {
+        return [
+            'key' => '{{ notifyKey }}',
+            'name' => '',
+            'group' => '',
+            'weight' => 0,
+            'settings' => [],
+            'tokens' => [],
+            'defaults' => [
+                'mail' => ['subject' => '', 'body' => ''],
+                'messenger' => ['body' => ''],
+            ],
+        ];
+    }
+}

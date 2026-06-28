@@ -1,0 +1,47 @@
+{
+    "name": "fomvasss/laravel-notify-templates",
+    "description": "Notification templates management for Laravel: DB-based templates, role/user subscriptions, channel resolution.",
+    "type": "library",
+    "keywords": ["laravel", "notification", "templates", "fomvasss"],
+    "homepage": "https://github.com/fomvasss/laravel-notify-templates",
+    "authors": [
+        {
+            "name": "Vasyl Fomin",
+            "email": "fomvasss@gmail.com",
+            "role": "Developer"
+        }
+    ],
+    "license": "MIT",
+    "require": {
+        "php": "^8.2",
+        "illuminate/support": "^10.0|^11.0|^12.0|^13.0",
+        "illuminate/database": "^10.0|^11.0|^12.0|^13.0",
+        "illuminate/notifications": "^10.0|^11.0|^12.0|^13.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Fomvasss\\NotifyTemplates\\": "src/"
+        }
+    },
+    "require-dev": {
+        "orchestra/testbench": "^8.0|^9.0|^10.0",
+        "phpunit/phpunit": "^10.0|^11.0"
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Fomvasss\\NotifyTemplates\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Fomvasss\\NotifyTemplates\\NotifyTemplatesServiceProvider"
+            ],
+            "aliases": {
+                "NotifyTemplates": "Fomvasss\\NotifyTemplates\\Facades\\NotifyTemplates"
+            }
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

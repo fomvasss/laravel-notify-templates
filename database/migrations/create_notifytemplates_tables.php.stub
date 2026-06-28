@@ -1,0 +1,69 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('notify_templates', function (Blueprint $table) {
+            $table->id();
+            $table->string('notify_key', 100);
+            // Template slot: 'mail', 'messenger'. null = fallback for all non-mail channels.
+            $table->string('channel', 50)->nullable();
+            // null = global (applies to all roles)
+            $table->string('role_key', 100)->nullable();
+            // null = single-tenant / global
+            $table->string('tenant_id', 100)->nullable();
+            $table->text('subject')->nullable();
+            $table->longText('body')->nullable();
+            $table->json('options')->nullable();
+            $table->timestamps();
+
+            $table->index(['notify_key', 'channel', 'role_key', 'tenant_id'], 'nt_lookup');
+        });
+        
+        // Then override the model via config('notifytemplates.models.notify_template').
+
+
+        Schema::create('notify_role_subscriptions', function (Blueprint $table) {
+            $table->id();
+            $table->string('role_key', 100);
+            $table->string('notify_key', 100);
+            $table->string('tenant_id', 100)->nullable();
+            $table->boolean('is_active')->default(true);
+            // true = send only to the context user (e.g. the client of the order),
+            // false = send to ALL active users with this role
+            $table->boolean('personal_only')->default(false);
+            // delivery channels for this role+notify: ['mail', 'telegram', 'sms', ...]
+            $table->json('channels')->nullable();
+            $table->json('options')->nullable();
+            $table->timestamps();
+
+            $table->unique(['role_key', 'notify_key', 'tenant_id'], 'nrs_unique');
+        });
+
+        // To enable multilingual subject/body via astrotomic/laravel-translatable,
+        // create a separate translations table (subject/body above can stay as fallback):
+        //
+        // Schema::create('notify_template_translations', function (Blueprint $table) {
+        //     $table->id();
+        //     $table->foreignId('notify_template_id')->constrained('notify_templates')->cascadeOnDelete();
+        //     $table->string('locale', 10);
+        //     $table->text('subject')->nullable();
+        //     $table->longText('body')->nullable();
+        //     $table->unique(['notify_template_id', 'locale']);
+        // });
+        //
+    }
+
+    public function down(): void
+    {
+        // Schema::dropIfExists('notify_template_translations');
+
+        Schema::dropIfExists('notify_role_subscriptions');
+        Schema::dropIfExists('notify_templates');
+    }
+};
