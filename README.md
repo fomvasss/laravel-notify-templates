@@ -441,6 +441,47 @@ NotifyTemplates::resolveDelay(string $notifyKey, string $roleKey, ?string $tenan
 
 ---
 
+## Channel resolution flow
+
+Every notification goes through a fixed resolution chain inside `via()`. Each step can only restrict channels — it cannot add ones that earlier steps excluded.
+
+```
+1. typeDefinition()['channels']
+       the channels this notify type explicitly supports
+       empty → falls back to config('notify-templates.channels')
+       ↓
+2. notify_role_subscriptions.channels   (set in admin UI)
+       which channels are enabled for this role+notify pair
+       empty → falls back to config('notify-templates.default_channels')
+       ↓
+3. getNotifyChannels()   (User model)
+       user's own channel preferences
+       non-empty → intersected with step 2 (user can opt out, not expand)
+       empty / method absent → all channels from step 2 pass through
+       ↓
+4. routeNotificationFor*()
+       physical check: does the user have an email / telegram id / etc.?
+       channel dropped silently if the route returns empty
+       if nothing survives → falls back to config('notify-templates.default_channels')
+       ↓
+5. only() / except()   (call-site override in code)
+       applied last, always wins
+```
+
+**Practical examples:**
+
+| Scenario | Result |
+|---|---|
+| No subscriptions in DB, nothing configured | `mail` (from `default_channels`) |
+| Subscription active, channels `[]` in DB | `mail` (from `default_channels`) |
+| Subscription channels `['mail','telegram']`, user has no telegram id | `mail` only |
+| Subscription channels `['mail','telegram']`, user `getNotifyChannels()` returns `['mail']` | `mail` only |
+| `->only(['telegram'])` at call site | `telegram` only, regardless of subscription |
+
+`config('notify-templates.channels')` is the **UI listing** only — it drives the checkboxes on the admin edit form and serves as a fallback for `getTypeChannels()`. It has no direct effect on the send path.
+
+---
+
 ## Template fallback chain
 
 `resolveTemplate('OrderOrdered', 'mail', 'client', 'shop-ua')` tries in order:

@@ -312,6 +312,47 @@ NotifyTemplates::resolveDelay(string $notifyKey, string $roleKey, ?string $tenan
 
 ---
 
+## Порядок вирішення каналів
+
+Кожне сповіщення проходить фіксований ланцюг всередині `via()`. Кожен крок може лише звужувати канали — розширити те, що відфільтрував попередній крок, неможливо.
+
+```
+1. typeDefinition()['channels']
+       канали, які підтримує цей тип сповіщення
+       порожній → fallback до config('notify-templates.channels')
+       ↓
+2. notify_role_subscriptions.channels   (задається в адмін-UI)
+       які канали увімкнені для пари роль+тип сповіщення
+       порожній → fallback до config('notify-templates.default_channels')
+       ↓
+3. getNotifyChannels()   (модель User)
+       канальні преференції конкретного юзера
+       непорожній → перетинається з кроком 2 (юзер може відписатися, але не додати)
+       порожній / метод відсутній → всі канали з кроку 2 проходять далі
+       ↓
+4. routeNotificationFor*()
+       фізична перевірка: чи є у юзера email / telegram id / тощо?
+       канал мовчки відкидається, якщо маршрут порожній
+       якщо нічого не вижило → fallback до config('notify-templates.default_channels')
+       ↓
+5. only() / except()   (виклик у коді)
+       застосовується останнім, завжди має пріоритет
+```
+
+**Практичні приклади:**
+
+| Сценарій | Результат |
+|---|---|
+| Немає підписок у БД, нічого не налаштовано | `mail` (з `default_channels`) |
+| Підписка активна, `channels = []` у БД | `mail` (з `default_channels`) |
+| Підписка `['mail','telegram']`, у юзера нема telegram id | тільки `mail` |
+| Підписка `['mail','telegram']`, `getNotifyChannels()` повертає `['mail']` | тільки `mail` |
+| `->only(['telegram'])` на місці виклику | тільки `telegram`, незалежно від підписки |
+
+`config('notify-templates.channels')` — це лише **список для UI**: він визначає чекбокси на формі редагування та є fallback для `getTypeChannels()`. На відправку безпосередньо не впливає.
+
+---
+
 ## Журнал змін
 
 Дивіться [CHANGELOG.md](CHANGELOG.md).
