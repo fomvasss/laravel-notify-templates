@@ -15,9 +15,9 @@ abstract class BaseNotify extends Notification
 
     protected ?string $tenantId = null;
 
-    private array $onlyChannels = [];
+    protected array $onlyChannels = [];
 
-    private array $exceptChannels = [];
+    protected array $exceptChannels = [];
 
     public function only(array $channels): static
     {
