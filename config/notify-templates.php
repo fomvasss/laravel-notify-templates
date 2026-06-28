@@ -71,6 +71,7 @@ return [
     */
     'models' => [
         'notify_template' => \Fomvasss\NotifyTemplates\Models\NotifyTemplate::class,
+        'notify_role_subscription' => \Fomvasss\NotifyTemplates\Models\NotifyRoleSubscription::class,
     ],
 
 ];

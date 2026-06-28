@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Fomvasss\NotifyTemplates;
 
 use Fomvasss\NotifyTemplates\Models\NotifyRoleSubscription;
-use Fomvasss\NotifyTemplates\Models\NotifyTemplate;
+use Fomvasss\NotifyTemplates\Models\NotifyTemplate as NotifyTemplateModel;
 use Fomvasss\NotifyTemplates\Notifications\BaseNotify;
 
 
@@ -123,8 +123,8 @@ class NotifyTemplatesManager
         ?string $roleKey = null,
         ?string $tenantId = null,
     ): ?NotifyTemplate {
-        /** @var class-string<NotifyTemplate> $class */
-        $class = config('notify-templates.models.notify_template', NotifyTemplate::class);
+        /** @var class-string<NotifyTemplateModel> $class */
+        $class = config('notify-templates.models.notify_template', NotifyTemplateModel::class);
 
         return $class::resolve($notifyKey, $channel, $roleKey, $tenantId);
     }
@@ -145,7 +145,9 @@ class NotifyTemplatesManager
         ?string $tenantId = null,
         array $userChannels = [],
     ): array {
-        $subscription = NotifyRoleSubscription::resolve($roleKey, $notifyKey, $tenantId);
+        /** @var class-string<NotifyRoleSubscription> $subClass */
+        $subClass = config('notify-templates.models.notify_role_subscription', NotifyRoleSubscription::class);
+        $subscription = $subClass::resolve($roleKey, $notifyKey, $tenantId);
 
         if (!$subscription || !$subscription->is_active) {
             return [];
@@ -168,7 +170,9 @@ class NotifyTemplatesManager
         string $roleKey,
         ?string $tenantId = null,
     ): int {
-        $subscription = NotifyRoleSubscription::resolve($roleKey, $notifyKey, $tenantId);
+        /** @var class-string<NotifyRoleSubscription> $subClass */
+        $subClass = config('notify-templates.models.notify_role_subscription', NotifyRoleSubscription::class);
+        $subscription = $subClass::resolve($roleKey, $notifyKey, $tenantId);
 
         return $subscription?->getDelaySeconds() ?? 0;
     }
