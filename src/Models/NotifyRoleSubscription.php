@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace Fomvasss\NotifyTemplates\Models;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
 class NotifyRoleSubscription extends Model
 {
+    use HasUuids;
+
     protected $guarded = ['id'];
 
     protected $casts = [
