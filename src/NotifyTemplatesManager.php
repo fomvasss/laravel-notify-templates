@@ -107,7 +107,7 @@ class NotifyTemplatesManager
     {
         $type = $this->getType($notifyKey);
 
-        return $type['channels'] ?? config('notify-templates.channels', []);
+        return $type['channels'] ?: config('notify-templates.channels', []);
     }
 
     // -------------------------------------------------------------------------
