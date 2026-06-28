@@ -39,6 +39,16 @@ class ResolveChannelsTest extends TestCase
         $this->assertSame([], $result);
     }
 
+    public function test_returns_default_channels_when_subscription_has_no_channels(): void
+    {
+        $this->sub(['channels' => []]);
+        config(['notifytemplates.default_channels' => ['mail', 'sms']]);
+
+        $result = $this->manager->resolveChannels('OrderOrdered', 'client');
+
+        $this->assertSame(['mail', 'sms'], $result);
+    }
+
     public function test_returns_empty_when_subscription_inactive(): void
     {
         $this->sub(['is_active' => false]);
@@ -57,23 +67,31 @@ class ResolveChannelsTest extends TestCase
         $this->assertSame(['mail', 'telegram'], $result);
     }
 
-    public function test_merges_user_channels(): void
+    public function test_user_channels_filter_subscription_channels(): void
+    {
+        $this->sub(['channels' => ['mail', 'sms']]);
+
+        $result = $this->manager->resolveChannels('OrderOrdered', 'client', null, ['mail']);
+
+        $this->assertSame(['mail'], $result);
+    }
+
+    public function test_user_channels_not_in_subscription_are_excluded(): void
     {
         $this->sub(['channels' => ['mail']]);
 
         $result = $this->manager->resolveChannels('OrderOrdered', 'client', null, ['telegram']);
 
-        $this->assertContains('mail', $result);
-        $this->assertContains('telegram', $result);
+        $this->assertSame([], $result);
     }
 
-    public function test_merged_channels_are_unique(): void
+    public function test_returns_all_subscription_channels_when_no_user_preferences(): void
     {
-        $this->sub(['channels' => ['mail', 'telegram']]);
+        $this->sub(['channels' => ['mail', 'sms']]);
 
-        $result = $this->manager->resolveChannels('OrderOrdered', 'client', null, ['mail']);
+        $result = $this->manager->resolveChannels('OrderOrdered', 'client');
 
-        $this->assertCount(2, $result);
+        $this->assertSame(['mail', 'sms'], $result);
     }
 
     // --- resolveDelay ---

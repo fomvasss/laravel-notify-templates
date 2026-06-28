@@ -46,8 +46,9 @@ return [
     // Delivery channels available in the project
     'channels' => ['mail', 'telegram', 'sms', 'database', 'broadcast'],
 
-    // Fallback when via() resolves to nothing
-    'default_channel' => 'mail',
+    // Fallback channels when subscription has no channels configured,
+    // or when via() resolves to nothing entirely
+    'default_channels' => ['mail'],
 
     // Tenant ID: null (single-tenant), or a callable that returns the tenant ID string
     'tenant_id' => null,
@@ -212,6 +213,8 @@ public function getNotifyChannels(): array
 }
 ```
 
+`getNotifyChannels()` defines the user's **preferred** channels. The result is intersected with the channels configured in `notify_role_subscriptions` — the user can opt out of channels but cannot add new ones beyond what the role allows. If the user returns `[]` or the method is absent, all subscription channels are used.
+
 ---
 
 ## NotifyRoleResolverInterface
@@ -338,6 +341,16 @@ For types sent directly without an event/listener (e.g. OTP):
 $user->notify(new UserOtpNotify(roleKey: 'client', code: $code));
 ```
 
+Use `only()` or `except()` to override channels at call site:
+
+```php
+// send only via mail, regardless of subscription settings
+$user->notify((new UserOtpNotify(roleKey: 'client', code: $code))->only(['mail']));
+
+// send via all resolved channels except sms
+$user->notify((new OrderOrderedNotify(roleKey: 'client'))->except(['sms']));
+```
+
 ---
 
 ## Listeners
@@ -410,7 +423,7 @@ NotifyTemplates::getType(string $key): ?array
 // Template resolution (8-level fallback chain)
 NotifyTemplates::resolveTemplate(string $notifyKey, string $channel, ?string $roleKey, ?string $tenantId): ?NotifyTemplate
 
-// Delivery channels for a role+notify merged with user channels
+// Delivery channels: subscription channels intersected with user preferences (user can opt out, not add)
 NotifyTemplates::resolveChannels(string $notifyKey, string $roleKey, ?string $tenantId, array $userChannels = []): array
 
 // Delay in seconds (options.delay in DB is stored in minutes)

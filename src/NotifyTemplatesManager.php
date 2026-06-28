@@ -105,7 +105,9 @@ class NotifyTemplatesManager
     // -------------------------------------------------------------------------
 
     /**
-     * Resolve delivery channels for a role+notify, merged with per-user channels.
+     * Resolve delivery channels for a role+notify.
+     * If the user has channel preferences, the result is their intersection with the subscription channels
+     * (user can opt out of channels but not add new ones).
      * Returns empty array if the subscription is inactive or not found.
      */
     public function resolveChannels(
@@ -120,10 +122,13 @@ class NotifyTemplatesManager
             return [];
         }
 
-        return array_unique(array_merge(
-            $subscription->channels ?? [],
-            $userChannels,
-        ));
+        $channels = $subscription->channels ?: config('notifytemplates.default_channels', ['mail']);
+
+        if ($userChannels) {
+            return array_values(array_intersect($channels, $userChannels));
+        }
+
+        return $channels;
     }
 
     /**

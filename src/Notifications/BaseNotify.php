@@ -15,6 +15,22 @@ abstract class BaseNotify extends Notification
 
     protected ?string $tenantId = null;
 
+    private array $onlyChannels = [];
+
+    private array $exceptChannels = [];
+
+    public function only(array $channels): static
+    {
+        $this->onlyChannels = $channels;
+        return $this;
+    }
+
+    public function except(array $channels): static
+    {
+        $this->exceptChannels = $channels;
+        return $this;
+    }
+
     // -------------------------------------------------------------------------
     // Contract — implement in each concrete notify class
     // -------------------------------------------------------------------------
@@ -87,7 +103,17 @@ abstract class BaseNotify extends Notification
 
         // Додаткові канали (telegram, sms тощо) — через трейт у конкретному класі, який викликає parent::via().
 
-        return $result ?: [config('notifytemplates.default_channel', 'mail')];
+        $result = $result ?: config('notifytemplates.default_channels', ['mail']);
+
+        if ($this->onlyChannels) {
+            $result = array_values(array_intersect($result, $this->onlyChannels));
+        }
+
+        if ($this->exceptChannels) {
+            $result = array_values(array_diff($result, $this->exceptChannels));
+        }
+
+        return $result;
     }
 
     // -------------------------------------------------------------------------

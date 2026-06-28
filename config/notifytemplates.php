@@ -22,10 +22,11 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Fallback channel when via() resolves to nothing.
+    | Default channels used when subscription has no channels configured,
+    | or when via() resolves to nothing entirely.
     |--------------------------------------------------------------------------
     */
-    'default_channel' => 'mail',
+    'default_channels' => ['mail'],
 
     /*
     |--------------------------------------------------------------------------

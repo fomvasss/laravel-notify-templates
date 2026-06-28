@@ -10,6 +10,11 @@ final class SampleNotify extends BaseNotify
 {
     public function __construct(protected string $roleKey) {}
 
+    public static function notifyKey(): string
+    {
+        return 'SampleEvent';
+    }
+
     public static function typeDefinition(): array
     {
         return [
