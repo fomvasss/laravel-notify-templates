@@ -10,7 +10,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('notify_templates', function (Blueprint $table) {
-            $table->uuid('id')->primary();
+            $table->id();
             $table->string('notify_key', 100);
             // Template slot: 'mail', 'messenger'. null = fallback for all non-mail channels.
             $table->string('channel', 50)->nullable();
@@ -31,7 +31,7 @@ return new class extends Migration
         }
 
         Schema::create('notify_role_subscriptions', function (Blueprint $table) {
-            $table->uuid('id')->primary();
+            $table->id();
             $table->string('role_key', 100);
             $table->string('notify_key', 100);
             $table->string('tenant_id', 100)->nullable();
