@@ -54,7 +54,10 @@ return [
     // or when via() resolves to nothing entirely
     'default_channels' => ['mail'],
 
-    // Tenant ID: null (single-tenant), or a callable that returns the tenant ID string
+    // Tenant ID: null (single-tenant), or a callable that returns the tenant ID string.
+    // Used automatically by NotifyTemplatesManager (resolveTemplate/resolveChannels/resolveDelay,
+    // and therefore BaseNotify) whenever no explicit $tenantId is passed — set $this->tenantId in
+    // a concrete Notify class to override it per-instance.
     'tenant_id' => null,
     // 'tenant_id' => fn() => app('domain')->getId(),
 
@@ -316,7 +319,7 @@ final class OrderOrderedNotify extends BaseNotify implements ShouldQueue
 
     public function __construct(protected Order $order, protected string $roleKey)
     {
-        // $this->tenantId = $order->domain_id; // set if multi-tenant
+        // $this->tenantId = $order->domain_id; // override per-instance; otherwise falls back to config('notify-templates.tenant_id')
     }
 
     public static function typeDefinition(): array

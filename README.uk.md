@@ -59,7 +59,10 @@ return [
     // або via() нічого не розв'язав
     'default_channels' => ['mail'],
 
-    // null — однотенантний. Або callable що повертає рядок ID тенанта
+    // null — однотенантний. Або callable що повертає рядок ID тенанта.
+    // Використовується автоматично в NotifyTemplatesManager (resolveTemplate/resolveChannels/
+    // resolveDelay, а отже й BaseNotify), коли $tenantId явно не передано — виставте
+    // $this->tenantId у конкретному Notify-класі, щоб перевизначити per-instance.
     'tenant_id' => null,
 
     // Директорії для авто-виявлення підкласів BaseNotify при завантаженні

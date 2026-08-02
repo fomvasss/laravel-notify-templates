@@ -111,6 +111,25 @@ class NotifyTemplatesManager
     }
 
     // -------------------------------------------------------------------------
+    // Tenant resolution
+    // -------------------------------------------------------------------------
+
+    /**
+     * Falls back to config('notify-templates.tenant_id') when no explicit tenantId is passed.
+     * The config value can be a plain string or a callable returning one.
+     */
+    protected function resolveTenantId(?string $tenantId): ?string
+    {
+        if ($tenantId !== null) {
+            return $tenantId;
+        }
+
+        $configured = config('notify-templates.tenant_id');
+
+        return is_callable($configured) ? $configured() : $configured;
+    }
+
+    // -------------------------------------------------------------------------
     // Template resolution
     // -------------------------------------------------------------------------
 
@@ -126,7 +145,7 @@ class NotifyTemplatesManager
         /** @var class-string<NotifyTemplateModel> $class */
         $class = config('notify-templates.models.notify_template', NotifyTemplateModel::class);
 
-        return $class::resolve($notifyKey, $channel, $roleKey, $tenantId);
+        return $class::resolve($notifyKey, $channel, $roleKey, $this->resolveTenantId($tenantId));
     }
 
     // -------------------------------------------------------------------------
@@ -147,7 +166,7 @@ class NotifyTemplatesManager
     ): array {
         /** @var class-string<NotifyRoleSubscription> $subClass */
         $subClass = config('notify-templates.models.notify_role_subscription', NotifyRoleSubscription::class);
-        $subscription = $subClass::resolve($roleKey, $notifyKey, $tenantId);
+        $subscription = $subClass::resolve($roleKey, $notifyKey, $this->resolveTenantId($tenantId));
 
         if (!$subscription || !$subscription->is_active) {
             return [];
@@ -172,7 +191,7 @@ class NotifyTemplatesManager
     ): int {
         /** @var class-string<NotifyRoleSubscription> $subClass */
         $subClass = config('notify-templates.models.notify_role_subscription', NotifyRoleSubscription::class);
-        $subscription = $subClass::resolve($roleKey, $notifyKey, $tenantId);
+        $subscription = $subClass::resolve($roleKey, $notifyKey, $this->resolveTenantId($tenantId));
 
         return $subscription?->getDelaySeconds() ?? 0;
     }

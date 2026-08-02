@@ -15,3 +15,4 @@
 
 ### Fixed
 - `registerType()` now throws `InvalidArgumentException` when `key` is missing
+- `config('notify-templates.tenant_id')` is now actually used: `NotifyTemplatesManager::resolveTemplate()`/`resolveChannels()`/`resolveDelay()` fall back to it (string or callable) whenever no explicit `$tenantId` is passed — previously the config key was documented but never read
