@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.2.6] - 2026-08-02
+
 ### Added
 - `only(array $channels)` and `except(array $channels)` fluent methods on `BaseNotify` to override channels at call site
 - `default_channels` config key (array) — fallback channels when subscription has no channels configured or `via()` resolves to nothing

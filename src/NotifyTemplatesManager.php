@@ -141,7 +141,7 @@ class NotifyTemplatesManager
         string $channel,
         ?string $roleKey = null,
         ?string $tenantId = null,
-    ): ?NotifyTemplate {
+    ): ?NotifyTemplateModel {
         /** @var class-string<NotifyTemplateModel> $class */
         $class = config('notify-templates.models.notify_template', NotifyTemplateModel::class);
 
