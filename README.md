@@ -157,6 +157,13 @@ Or statically via config:
 
 `tokens` and `defaults` are UI metadata — the package does not use them for sending. `getBodyDefault()` / `getSubjectDefault()` on `BaseNotify` read from `defaults.mail` automatically. Keep them in sync.
 
+**Custom keys.** `registerType()` stores the whole array returned by `typeDefinition()` as-is — any key beyond the
+table above survives untouched and comes back from `NotifyTemplates::getType($notifyKey)['your_key']`. Useful for
+project-specific extensibility without forking the package — e.g. an `allowed_roles` array to restrict which roles
+a notify type can even be configured for (a type whose audience is structurally fixed — an OTP code always goes
+directly to the user logging in — gains nothing from a role you'll never use), enforced in your own admin
+controller/UI, not by the package.
+
 ### settings field
 
 `settings` declares which option keys are shown in the admin UI. The only key the package reads natively is `delay`:
@@ -236,6 +243,16 @@ use Fomvasss\NotifyTemplates\Models\NotifyRoleSubscription;
 
 class AppNotifyRoleResolver implements NotifyRoleResolverInterface
 {
+    // Roles you actually trust to receive a broadcast — typically your internal staff role(s).
+    // Whitelist, not blacklist: any role not listed here (your "customer"/"tenant" role, and any
+    // future role you add and forget to review) defaults to personal-only delivery. Without this,
+    // a subscription row created with its default personal_only=false — e.g. the first time
+    // someone opens the admin UI for a brand-new notify type, via a lazy firstOrNew() — silently
+    // broadcasts to *every* holder of that role the first time the event fires. For a role with
+    // many unrelated accounts (customers, tenants) that means leaking one person's event (an
+    // invite link, a generated password, ...) to everyone else on the platform.
+    private const BROADCAST_SAFE_ROLES = ['admin'];
+
     public function resolveUsersForNotify(string $notifyKey, mixed $context = null): array
     {
         $tenantId = config('notify-templates.tenant_id');
@@ -250,7 +267,9 @@ class AppNotifyRoleResolver implements NotifyRoleResolverInterface
         $result = [];
 
         foreach ($subscriptions as $sub) {
-            if ($sub->personal_only && $context?->user) {
+            $forcePersonal = !in_array($sub->role_key, self::BROADCAST_SAFE_ROLES, true);
+
+            if (($sub->personal_only || $forcePersonal) && $context?->user) {
                 $result[$sub->role_key] = collect([$context->user]);
             } else {
                 $result[$sub->role_key] = User::role($sub->role_key)
@@ -270,6 +289,25 @@ $this->app->bind(
     \Fomvasss\NotifyTemplates\Contracts\NotifyRoleResolverInterface::class,
     \App\Services\AppNotifyRoleResolver::class,
 );
+```
+
+> **Note:** `personal_only`, wherever it comes from (the subscription's own flag, or the whitelist force above), redirects
+> delivery to `$context`'s user **regardless of which role the subscription row belongs to** — it does not mean "send to
+> one specific person holding this role". Enabling it on a `BROADCAST_SAFE_ROLES` row (e.g. `admin`) does not reach any
+> actual staff member; it just re-sends the same message to `$context->user` again, formatted with that role's template.
+> There is no per-notification concept of "this one specific admin" — only "the person the event is about" vs "everyone
+> holding a role".
+
+```mermaid
+flowchart TD
+    A["foreach $sub — active NotifyRoleSubscription rows<br/>for this notifyKey"] --> B{"sub.role_key in<br/>BROADCAST_SAFE_ROLES?"}
+    B -- "no (customer/tenant/... role)" --> D["force personal"]
+    B -- "yes (trusted staff role)" --> C{"sub.personal_only<br/>checked?"}
+    C -- "no (default)" --> E["broadcast:<br/>all active users with role_key"]
+    C -- "yes" --> D
+    D --> F{"$context available?<br/>(context instanceof User)"}
+    F -- "yes" --> G["send only to $context's user<br/>— regardless of role_key"]
+    F -- "no" --> E
 ```
 
 ---
@@ -363,6 +401,28 @@ $user->notify((new OrderOrderedNotify(roleKey: 'client'))->except(['sms']));
 ---
 
 ## Listeners
+
+Overall flow, end to end:
+
+```mermaid
+sequenceDiagram
+    participant App as App code
+    participant Listener
+    participant Resolver as NotifyRoleResolverInterface
+    participant Notif as Notification::send()
+    participant Notify as YourNotify (BaseNotify)
+
+    App->>Listener: event(new OrderOrdered($order))
+    Listener->>Resolver: resolveUsersForNotify('OrderOrdered', $order)
+    Resolver-->>Listener: ['role_key' => Collection<User>]
+    loop for each role_key
+        Listener->>Notif: send($users, new YourNotify($order, $roleKey))
+        Notif->>Notify: toMail() / toTelegram() / ...
+        Notify->>Notify: resolveTemplate() — 8-level fallback<br/>(DB → typeDefinition defaults)
+        Notify->>Notify: via() — resolveChannels() ∩ user channels<br/>∩ physical route (email set, telegram_id set, ...)
+        Notify-->>App: delivered per resolved channel
+    end
+```
 
 ```php
 use Fomvasss\NotifyTemplates\Contracts\NotifyRoleResolverInterface;

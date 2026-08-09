@@ -140,6 +140,12 @@ NotifyTemplates::registerTypes([
 // options = {"delay": 5} → resolveDelay() поверне 300 секунд
 ```
 
+**Довільні ключі.** `registerType()` зберігає весь масив з `typeDefinition()` як є — будь-який ключ поза таблицею
+вище спокійно доїде назад через `NotifyTemplates::getType($notifyKey)['твій_ключ']`. Зручно для розширення
+поведінки конкретного проекту без форку пакету — напр. `allowed_roles`, коли тип сповіщення структурно
+стосується лише однієї ролі (OTP-код завжди йде напряму юзеру, що логіниться — заводити шаблон під іншу роль
+нема сенсу, він ніколи не використається), перевірка — вже на рівні власного admin-контролера/UI, не пакету.
+
 ---
 
 ## Конкретні класи сповіщень
@@ -203,6 +209,28 @@ $user->notify((new OrderOrderedNotify('client', $order))->except(['sms']));
 
 ## Слухачі та відправка
 
+Повний флоу, від події до доставки:
+
+```mermaid
+sequenceDiagram
+    participant App as Код застосунку
+    participant Listener
+    participant Resolver as NotifyRoleResolverInterface
+    participant Notif as Notification::send()
+    participant Notify as ВашNotify (BaseNotify)
+
+    App->>Listener: event(new OrderOrdered($order))
+    Listener->>Resolver: resolveUsersForNotify('OrderOrdered', $order)
+    Resolver-->>Listener: ['role_key' => Collection<User>]
+    loop для кожної role_key
+        Listener->>Notif: send($users, new ВашNotify($order, $roleKey))
+        Notif->>Notify: toMail() / toTelegram() / ...
+        Notify->>Notify: resolveTemplate() — 8-рівневий fallback<br/>(БД → дефолти з typeDefinition)
+        Notify->>Notify: via() — resolveChannels() ∩ канали юзера<br/>∩ фізична перевірка маршруту (є email, telegram_id...)
+        Notify-->>App: доставлено по кожному резолвленому каналу
+    end
+```
+
 ```php
 use Fomvasss\NotifyTemplates\Contracts\NotifyRoleResolverInterface;
 use Fomvasss\NotifyTemplates\Facades\NotifyTemplates;
@@ -214,16 +242,14 @@ class OrderOrderedListener
 
     public function handle(OrderOrdered $event): void
     {
-        $notifyKey = 'OrderOrdered';
+        $order = $event->order->fresh();
 
-        foreach (NotifyTemplates::getTypes() as $type) {
-            $roleKey = $type['key']; // або власна логіка визначення ролі
-            $users   = $this->resolver->resolve($roleKey, $notifyKey, $event->order);
-            $delay   = NotifyTemplates::resolveDelay($notifyKey, $roleKey);
+        foreach ($this->resolver->resolveUsersForNotify('OrderOrdered', $order) as $roleKey => $users) {
+            $delay = NotifyTemplates::resolveDelay('OrderOrdered', $roleKey);
 
             Notification::send(
                 $users,
-                (new OrderOrderedNotify($roleKey, $event->order))->delay($delay)
+                (new OrderOrderedNotify($order, $roleKey))->delay($delay),
             );
         }
     }
@@ -256,12 +282,42 @@ class User extends Authenticatable
 
 ```php
 use Fomvasss\NotifyTemplates\Contracts\NotifyRoleResolverInterface;
+use Fomvasss\NotifyTemplates\Models\NotifyRoleSubscription;
 
 class NotifyRoleResolver implements NotifyRoleResolverInterface
 {
-    public function resolve(string $roleKey, string $notifyKey, mixed $context = null): iterable
+    // Ролі, яким довіряємо broadcast "усім носіям ролі" — внутрішній довірений стаф.
+    // Whitelist, не blacklist: будь-яка роль, якої тут нема (і кожна майбутня нова роль, про яку
+    // забудуть згадати тут), за замовчуванням трактується як "багато непов'язаних людей" і йде
+    // тільки персонально. Без цього whitelist — рядок підписки, створений з дефолтним
+    // personal_only=false (напр. лениво, через firstOrNew() при першому відкритті адмінки для
+    // нового типу сповіщення), одразу і мовчки розсилає всім носіям ролі. Для ролі з десятками
+    // непов'язаних акаунтів (клієнти, орендарі) це витік чужих даних (посилання-запрошення,
+    // згенерований пароль тощо) усім іншим.
+    private const BROADCAST_SAFE_ROLES = ['admin'];
+
+    public function resolveUsersForNotify(string $notifyKey, mixed $context = null): array
     {
-        return User::role($roleKey)->get();
+        $subscriptions = NotifyRoleSubscription::query()
+            ->active()
+            ->forNotify($notifyKey)
+            ->get();
+
+        $result = [];
+
+        foreach ($subscriptions as $sub) {
+            $forcePersonal = !in_array($sub->role_key, self::BROADCAST_SAFE_ROLES, true);
+
+            if (($sub->personal_only || $forcePersonal) && $context?->user) {
+                $result[$sub->role_key] = collect([$context->user]);
+            } else {
+                $result[$sub->role_key] = User::role($sub->role_key)
+                    ->where('status', User::STATUS_ACTIVE)
+                    ->get();
+            }
+        }
+
+        return $result;
     }
 }
 ```
@@ -269,6 +325,23 @@ class NotifyRoleResolver implements NotifyRoleResolverInterface
 ```php
 // AppServiceProvider::register()
 $this->app->bind(NotifyRoleResolverInterface::class, NotifyRoleResolver::class);
+```
+
+> **Важливо:** `personal_only`, звідки б не взявся (чекбокс чи форс вище), підміняє аудиторію на `$context`'s
+> user **незалежно від ролі рядка** — увімкнувши його на `BROADCAST_SAFE_ROLES`-рядку (напр. `admin`), лист піде
+> не реальному стафу, а тій самій контекстній людині, просто під шаблоном цієї ролі. Концепції "оцей конкретний
+> адмін особисто" в системі немає — лише "людина, якої стосується подія" проти "всі носії ролі".
+
+```mermaid
+flowchart TD
+    A["foreach $sub — активні NotifyRoleSubscription рядки<br/>для цього notifyKey"] --> B{"sub.role_key в<br/>BROADCAST_SAFE_ROLES?"}
+    B -- "ні (клієнт/орендар/... роль)" --> D["примусово особисто"]
+    B -- "так (довірена роль стафу)" --> C{"sub.personal_only<br/>увімкнено?"}
+    C -- "ні (за замовчуванням)" --> E["broadcast:<br/>усі активні юзери з role_key"]
+    C -- "так" --> D
+    D --> F{"$context є?<br/>(context instanceof User)"}
+    F -- "так" --> G["надіслати лише юзеру з $context<br/>— незалежно від role_key"]
+    F -- "ні" --> E
 ```
 
 ---
@@ -294,7 +367,7 @@ $this->app->bind(NotifyRoleResolverInterface::class, NotifyRoleResolver::class);
 
 ## personal_only
 
-Прапор `personal_only` на `notify_role_subscriptions` — надсилати лише конкретній людині з контексту події, а не всім юзерам з цією роллю. Логіка реалізується на стороні додатку в `NotifyRoleResolverInterface::resolve()`.
+Прапор `personal_only` на `notify_role_subscriptions` — надсилати лише конкретній людині з контексту події, а не всім юзерам з цією роллю. Логіка реалізується на стороні додатку в `NotifyRoleResolverInterface::resolveUsersForNotify()` (див. розділ вище — там і про `BROADCAST_SAFE_ROLES`-whitelist, без якого дефолтне `personal_only=false` на ролі з багатьма непов'язаними акаунтами означає розсилку всім одразу).
 
 ---
 
