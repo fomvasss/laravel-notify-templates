@@ -553,25 +553,31 @@ NotifyTemplates::resolveDelay(string $notifyKey, string $roleKey, ?string $tenan
 
 ## Channel resolution flow
 
-Every notification goes through a fixed resolution chain inside `via()`. Each step can only restrict channels — it cannot add ones that earlier steps excluded.
+Every notification goes through a fixed resolution chain inside `via()`. Each step can only restrict channels — it cannot add ones that earlier steps excluded. `typeDefinition()['channels']` / `getTypeChannels()` are **not** part of this chain — that's a separate, UI-only listing (see note at the bottom).
 
 ```
-1. typeDefinition()['channels']
-       the channels this notify type explicitly supports
-       empty → falls back to config('notify-templates.channels')
+0. isNotifyEnabled(notifyKey, notifiable)
+       has the notifiable opted out of this whole type? (notify_user_settings.is_enabled)
+       'user_configurable' => false in typeDefinition() → always true, the row (if any) is ignored
+       false → via() returns [] immediately, nothing below runs
        ↓
-2. notify_role_subscriptions.channels   (set in admin UI)
+1. getNotifyChannels()   (on the notifiable — optional method)
+       the notifiable's own global channel preference
+       method absent → treated as "no restriction", not "no channels"
+       ↓
+2. resolveNotifyUserChannels(notifyKey, notifiable)
+       per-type override (notify_user_settings.channels) — narrows step 1 further, only for this one type
+       'user_configurable' => false → always null, the row (if any) is ignored
+       null → no narrowing beyond step 1
+       ↓
+3. notify_role_subscriptions.channels   (set in admin UI)
        which channels are enabled for this role+notify pair
        empty → falls back to config('notify-templates.default_channels')
+       intersected with the combined result of steps 1+2 (a notifiable can only opt out, never add channels the role doesn't allow)
        ↓
-3. getNotifyChannels()   (User model)
-       user's own channel preferences
-       non-empty → intersected with step 2 (user can opt out, not expand)
-       empty / method absent → all channels from step 2 pass through
-       ↓
-4. routeNotificationFor*()
-       physical check: does the user have an email / telegram id / etc.?
-       channel dropped silently if the route returns empty
+4. routeNotificationFor*() / property checks (e.g. mail needs ->email)
+       physical check: does the notifiable actually have an email / telegram id / etc.?
+       channel dropped silently if the route/property is empty
        if nothing survives → falls back to config('notify-templates.default_channels')
        ↓
 5. only() / except()   (call-site override in code)
@@ -586,9 +592,11 @@ Every notification goes through a fixed resolution chain inside `via()`. Each st
 | Subscription active, channels `[]` in DB | `mail` (from `default_channels`) |
 | Subscription channels `['mail','telegram']`, user has no telegram id | `mail` only |
 | Subscription channels `['mail','telegram']`, user `getNotifyChannels()` returns `['mail']` | `mail` only |
+| Subscription channels `['mail','telegram']`, user prefers both, but has a `notify_user_settings.channels = ['telegram']` override for this one type | `telegram` only — for this type; other types are unaffected |
+| `notify_user_settings.is_enabled = false` for this type, but `typeDefinition()['user_configurable'] = false` | still sent — the opt-out row is ignored |
 | `->only(['telegram'])` at call site | `telegram` only, regardless of subscription |
 
-`config('notify-templates.channels')` is the **UI listing** only — it drives the checkboxes on the admin edit form and serves as a fallback for `getTypeChannels()`. It has no direct effect on the send path.
+`config('notify-templates.channels')` and `typeDefinition()['channels']` (via `getTypeChannels()`) are the **UI listing** only — they drive the checkboxes on the admin edit form. Neither has a direct effect on the send path above.
 
 ---
 

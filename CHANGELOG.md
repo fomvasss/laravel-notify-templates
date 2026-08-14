@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-08-14
+
+### Fixed
+- README "Channel resolution flow" corrected and brought up to date: `typeDefinition()['channels']` was never actually part of the `via()` resolution chain (it only drives the admin UI's channel checkboxes) — the doc previously listed it as step 1, which was wrong. Documented the `isNotifyEnabled()` / `resolveNotifyUserChannels()` steps (added in 0.4.0/0.5.0) that were missing from this section
+
 ## [0.5.0] - 2026-08-14
 
 ### Added

@@ -437,25 +437,31 @@ NotifyTemplates::resolveDelay(string $notifyKey, string $roleKey, ?string $tenan
 
 ## Порядок вирішення каналів
 
-Кожне сповіщення проходить фіксований ланцюг всередині `via()`. Кожен крок може лише звужувати канали — розширити те, що відфільтрував попередній крок, неможливо.
+Кожне сповіщення проходить фіксований ланцюг всередині `via()`. Кожен крок може лише звужувати канали — розширити те, що відфільтрував попередній крок, неможливо. `typeDefinition()['channels']` / `getTypeChannels()` **не** входять у цей ланцюг — це окремий, суто UI-довідник (див. примітку внизу).
 
 ```
-1. typeDefinition()['channels']
-       канали, які підтримує цей тип сповіщення
-       порожній → fallback до config('notify-templates.channels')
+0. isNotifyEnabled(notifyKey, notifiable)
+       чи не вимкнув notifiable весь тип цілком? (notify_user_settings.is_enabled)
+       'user_configurable' => false у typeDefinition() → завжди true, рядок (якщо є) ігнорується
+       false → via() одразу повертає [], решта кроків не виконується
        ↓
-2. notify_role_subscriptions.channels   (задається в адмін-UI)
+1. getNotifyChannels()   (на notifiable — опційний метод)
+       глобальна канальна преференція самого notifiable
+       метод відсутній → трактується як "без обмежень", не "нема каналів"
+       ↓
+2. resolveNotifyUserChannels(notifyKey, notifiable)
+       per-type override (notify_user_settings.channels) — звужує крок 1, лише для цього одного типу
+       'user_configurable' => false → завжди null, рядок (якщо є) ігнорується
+       null → без додаткового звуження понад крок 1
+       ↓
+3. notify_role_subscriptions.channels   (задається в адмін-UI)
        які канали увімкнені для пари роль+тип сповіщення
        порожній → fallback до config('notify-templates.default_channels')
+       перетинається з об'єднаним результатом кроків 1+2 (notifiable може лише відписатись, не додати канал, якого роль не дозволяє)
        ↓
-3. getNotifyChannels()   (модель User)
-       канальні преференції конкретного юзера
-       непорожній → перетинається з кроком 2 (юзер може відписатися, але не додати)
-       порожній / метод відсутній → всі канали з кроку 2 проходять далі
-       ↓
-4. routeNotificationFor*()
-       фізична перевірка: чи є у юзера email / telegram id / тощо?
-       канал мовчки відкидається, якщо маршрут порожній
+4. routeNotificationFor*() / перевірка властивості (напр. mail потребує ->email)
+       фізична перевірка: чи є у notifiable реально email / telegram id / тощо?
+       канал мовчки відкидається, якщо маршрут/властивість порожні
        якщо нічого не вижило → fallback до config('notify-templates.default_channels')
        ↓
 5. only() / except()   (виклик у коді)
@@ -470,9 +476,11 @@ NotifyTemplates::resolveDelay(string $notifyKey, string $roleKey, ?string $tenan
 | Підписка активна, `channels = []` у БД | `mail` (з `default_channels`) |
 | Підписка `['mail','telegram']`, у юзера нема telegram id | тільки `mail` |
 | Підписка `['mail','telegram']`, `getNotifyChannels()` повертає `['mail']` | тільки `mail` |
+| Підписка `['mail','telegram']`, юзер хоче обидва, але для цього типу є `notify_user_settings.channels = ['telegram']` | тільки `telegram` — лише для цього типу, інші не зачіпає |
+| `notify_user_settings.is_enabled = false` для типу, але `typeDefinition()['user_configurable'] = false` | все одно надсилається — рядок вимкнення ігнорується |
 | `->only(['telegram'])` на місці виклику | тільки `telegram`, незалежно від підписки |
 
-`config('notify-templates.channels')` — це лише **список для UI**: він визначає чекбокси на формі редагування та є fallback для `getTypeChannels()`. На відправку безпосередньо не впливає.
+`config('notify-templates.channels')` і `typeDefinition()['channels']` (через `getTypeChannels()`) — це лише **список для UI**: визначають чекбокси на формі редагування в адмінці. Жоден з них напряму не впливає на ланцюг вище.
 
 ---
 
