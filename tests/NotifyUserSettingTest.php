@@ -225,4 +225,48 @@ class NotifyUserSettingTest extends TestCase
 
         $this->assertSame(['mail'], $result);
     }
+
+    // --- user_configurable: false (e.g. OTP) — opt-out/channel-override never apply ---
+
+    public function test_is_user_configurable_defaults_to_true(): void
+    {
+        $this->assertTrue($this->manager->isUserConfigurable('UnregisteredType'));
+    }
+
+    public function test_is_user_configurable_false_when_type_opts_out(): void
+    {
+        $this->manager->registerType(['key' => 'UserOtp', 'name' => 'OTP', 'group' => 'user', 'user_configurable' => false]);
+
+        $this->assertFalse($this->manager->isUserConfigurable('UserOtp'));
+    }
+
+    public function test_is_notify_enabled_ignores_opt_out_row_when_not_configurable(): void
+    {
+        $this->manager->registerType(['key' => 'UserOtp', 'name' => 'OTP', 'group' => 'user', 'user_configurable' => false]);
+        $user = SampleUser::withId(1);
+
+        NotifyUserSetting::create([
+            'notifiable_type' => $user->getMorphClass(),
+            'notifiable_id' => $user->getKey(),
+            'notify_key' => 'UserOtp',
+            'is_enabled' => false,
+        ]);
+
+        $this->assertTrue($this->manager->isNotifyEnabled('UserOtp', $user));
+    }
+
+    public function test_resolve_notify_user_channels_ignores_override_when_not_configurable(): void
+    {
+        $this->manager->registerType(['key' => 'UserOtp', 'name' => 'OTP', 'group' => 'user', 'user_configurable' => false]);
+        $user = SampleUser::withId(1);
+
+        NotifyUserSetting::create([
+            'notifiable_type' => $user->getMorphClass(),
+            'notifiable_id' => $user->getKey(),
+            'notify_key' => 'UserOtp',
+            'channels' => ['telegram'],
+        ]);
+
+        $this->assertNull($this->manager->resolveNotifyUserChannels('UserOtp', $user));
+    }
 }

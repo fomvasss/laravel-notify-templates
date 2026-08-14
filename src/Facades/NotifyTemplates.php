@@ -17,6 +17,8 @@ use Illuminate\Support\Facades\Facade;
  * @method static array resolveChannels(string $notifyKey, string $roleKey, ?string $tenantId = null, array $userChannels = [])
  * @method static int resolveDelay(string $notifyKey, string $roleKey, ?string $tenantId = null)
  * @method static bool isNotifyEnabled(string $notifyKey, mixed $notifiable)
+ * @method static bool isUserConfigurable(string $notifyKey)
+ * @method static array|null resolveNotifyUserChannels(string $notifyKey, mixed $notifiable)
  *
  * @see NotifyTemplatesManager
  */

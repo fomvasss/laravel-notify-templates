@@ -198,11 +198,25 @@ class NotifyTemplatesManager
     }
 
     /**
+     * false only when the type's own typeDefinition() explicitly opts out via
+     * 'user_configurable' => false (e.g. OTP/security codes — a notifiable must not be able to
+     * turn those off, whether by a UI toggle or a stray notify_user_settings row). Default true.
+     */
+    public function isUserConfigurable(string $notifyKey): bool
+    {
+        return $this->getType($notifyKey)['user_configurable'] ?? true;
+    }
+
+    /**
      * Whether the notifiable itself has opted out of this notify type — independent of role
      * subscription/channels. Works for any Eloquent model, no interface/trait required on it.
      */
     public function isNotifyEnabled(string $notifyKey, mixed $notifiable): bool
     {
+        if (!$this->isUserConfigurable($notifyKey)) {
+            return true;
+        }
+
         /** @var class-string<NotifyUserSetting> $class */
         $class = config('notify-templates.models.notify_user_setting', NotifyUserSetting::class);
 
@@ -215,6 +229,10 @@ class NotifyTemplatesManager
      */
     public function resolveNotifyUserChannels(string $notifyKey, mixed $notifiable): ?array
     {
+        if (!$this->isUserConfigurable($notifyKey)) {
+            return null;
+        }
+
         /** @var class-string<NotifyUserSetting> $class */
         $class = config('notify-templates.models.notify_user_setting', NotifyUserSetting::class);
 

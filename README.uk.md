@@ -303,6 +303,24 @@ NotifyUserSetting::updateOrCreate(
 
 Колонка `notifiable_id` — рядок, не integer FK, тому працює незалежно від того, автоінкрементні первинні ключі в додатку чи UUID.
 
+### Типи, які не можна кастомізувати (OTP, коди безпеки)
+
+Деякі типи сповіщень не можна дозволяти notifiable вимикати чи обмежувати каналом — напр. OTP-код входу: якщо юзер зможе вимкнути його у профілі, він сам собі заблокує вхід. Позначити тип через `typeDefinition()`:
+
+```php
+public static function typeDefinition(): array
+{
+    return [
+        'key' => 'UserOtp',
+        'name' => 'Код входу',
+        'group' => 'user',
+        'user_configurable' => false, // дефолт true
+    ];
+}
+```
+
+З `user_configurable: false` — `isNotifyEnabled()` завжди повертає `true`, `resolveNotifyUserChannels()` завжди `null` для цього типу, незалежно від того, чи існує для нього рядок у `notify_user_settings` (захист на рівні даних, не лише приховування в UI). `NotifyTemplates::isUserConfigurable($notifyKey)` — щоб відфільтрувати такі типи зі списку тумблерів у формі налаштувань.
+
 ---
 
 ## NotifyRoleResolverInterface

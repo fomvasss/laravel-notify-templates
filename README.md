@@ -260,6 +260,24 @@ To read the current state outside of a `Notification` (e.g. to render the toggle
 
 The `notifiable_id` column is a string, not an integer FK — so it works whether the host app's primary keys are auto-increment integers or UUIDs.
 
+### Non-configurable types (OTP, security codes)
+
+Some notify types must never be opt-out-able or channel-restricted by the notifiable — e.g. an OTP/login code: if the user could turn that off in their profile, they'd lock themselves out. Opt a type out with `typeDefinition()`:
+
+```php
+public static function typeDefinition(): array
+{
+    return [
+        'key' => 'UserOtp',
+        'name' => 'Login code',
+        'group' => 'user',
+        'user_configurable' => false, // default true
+    ];
+}
+```
+
+With `user_configurable: false`, `isNotifyEnabled()` always returns `true` and `resolveNotifyUserChannels()` always returns `null` for that type — regardless of any `notify_user_settings` row that might exist for it (defense in depth, not just a UI-level hide). Use `NotifyTemplates::isUserConfigurable($notifyKey)` to filter such types out of a settings form's list of toggles.
+
 ---
 
 ## NotifyRoleResolverInterface

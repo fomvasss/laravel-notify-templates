@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-08-14
+
+### Added
+- `typeDefinition()['user_configurable'] = false` — mark a notify type as never opt-out-able or channel-restrictable by the notifiable (e.g. OTP/security codes), even if a `notify_user_settings` row exists for it. Default `true` (unchanged behavior for existing types)
+- `NotifyTemplatesManager::isUserConfigurable(string $notifyKey): bool`, also on the `NotifyTemplates` facade — use it to filter such types out of a settings-form toggle list
+
 ## [0.4.0] - 2026-08-14
 
 ### Added
