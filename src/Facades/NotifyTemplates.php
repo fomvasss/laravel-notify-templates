@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Facade;
  * @method static \Fomvasss\NotifyTemplates\Models\NotifyTemplate|null resolveTemplate(string $notifyKey, string $channel, ?string $roleKey = null, ?string $tenantId = null)
  * @method static array resolveChannels(string $notifyKey, string $roleKey, ?string $tenantId = null, array $userChannels = [])
  * @method static int resolveDelay(string $notifyKey, string $roleKey, ?string $tenantId = null)
+ * @method static bool isNotifyEnabled(string $notifyKey, mixed $notifiable)
  *
  * @see NotifyTemplatesManager
  */

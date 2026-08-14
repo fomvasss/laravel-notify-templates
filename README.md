@@ -8,6 +8,7 @@ DB-based notification templates for Laravel. Manages notification templates, rol
 
 - **`notify_templates`** — stores subject/body per notify type + channel slot + role + tenant, with fallback chain
 - **`notify_role_subscriptions`** — which notify types are active for which role (channels, delay, personal_only)
+- **`notify_user_settings`** — per-notifiable opt-out of a specific notify type (polymorphic — works with any Eloquent model, not just a `User`)
 - **`BaseNotify`** — abstract base that resolves templates and channels; concrete classes live in the app
 - **`NotifyTemplatesManager`** — type registry + resolve methods, available via `NotifyTemplates` facade
 
@@ -230,6 +231,34 @@ public function getNotifyChannels(): array
 ```
 
 `getNotifyChannels()` defines the user's **preferred** channels. The result is intersected with the channels configured in `notify_role_subscriptions` — the user can opt out of channels but cannot add new ones beyond what the role allows. If the user returns `[]` or the method is absent, all subscription channels are used.
+
+### Per-type opt-out & channel override (`notify_user_settings`)
+
+Two independent, optional things a notifiable can record per notify type — both on the same row, both default to "not customized":
+
+- **`is_enabled`** — turn one specific notify type off entirely (e.g. "stop emailing me about X, but keep everything else"). Checked automatically in `BaseNotify::via()`:
+  ```php
+  if (!$this->manager()->isNotifyEnabled($this->getNotifyKey(), $notifiable)) {
+      return [];
+  }
+  ```
+- **`channels`** — restrict *this one type* to a subset of channels, e.g. "OrderOrdered only via telegram" while everything else still follows the notifiable's global `getNotifyChannels()`. Narrows, never widens — it's intersected with the global preference, so you can't route to a channel the notifiable hasn't connected:
+  ```php
+  $override = $this->manager()->resolveNotifyUserChannels($this->getNotifyKey(), $notifiable); // null = no override
+  ```
+
+Both work for **any** Eloquent model — no trait or interface required on the notifiable. Absence of a row = fully default (enabled, no channel override). A row only ever exists because something explicit was recorded — typically from a profile settings form:
+
+```php
+NotifyUserSetting::updateOrCreate(
+    ['notifiable_type' => $user->getMorphClass(), 'notifiable_id' => $user->getKey(), 'notify_key' => 'OrderOrdered'],
+    ['is_enabled' => true, 'channels' => ['telegram']],
+);
+```
+
+To read the current state outside of a `Notification` (e.g. to render the toggle in a settings form), either query `NotifyUserSetting` directly, call the facade — `NotifyTemplates::isNotifyEnabled($notifyKey, $user)` / `NotifyTemplates::resolveNotifyUserChannels($notifyKey, $user)` — or add `HasNotifySettings` to the model (it already carries `isNotifyEnabled()` alongside `getNotifyChannels()`).
+
+The `notifiable_id` column is a string, not an integer FK — so it works whether the host app's primary keys are auto-increment integers or UUIDs.
 
 ---
 

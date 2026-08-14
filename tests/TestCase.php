@@ -57,5 +57,15 @@ abstract class TestCase extends OrchestraTestCase
             $table->json('options')->nullable();
             $table->timestamps();
         });
+
+        Schema::create('notify_user_settings', function ($table) {
+            $table->id();
+            $table->string('notifiable_type');
+            $table->string('notifiable_id');
+            $table->string('notify_key', 100);
+            $table->boolean('is_enabled')->default(true);
+            $table->json('channels')->nullable();
+            $table->timestamps();
+        });
     }
 }

@@ -14,6 +14,7 @@ DB-шаблони сповіщень для Laravel. Управляє шабло
 
 - **`notify_templates`** — subject/body по типу сповіщення + слот каналу + роль + тенант, з ланцюжком fallback
 - **`notify_role_subscriptions`** — які типи активні для якої ролі (канали, затримка, personal_only)
+- **`notify_user_settings`** — персональне вимкнення конкретного типу сповіщення (поліморфна — працює з будь-якою Eloquent-моделлю, не лише `User`)
 - **`BaseNotify`** — абстрактний базовий клас; розв'язує шаблони та канали; конкретні класи живуть у додатку
 - **`NotifyTemplatesManager`** — реєстр типів + методи розв'язання, доступний через фасад `NotifyTemplates`
 
@@ -273,6 +274,34 @@ class User extends Authenticatable
 ```
 
 Результат **перетинається** з каналами підписки ролі — юзер може відписатись від каналу, але не додати новий понад те що дозволяє роль. Якщо метод відсутній або повертає `[]` — використовуються усі канали підписки.
+
+### Персональне вимкнення типу і override каналів (`notify_user_settings`)
+
+Дві незалежні опційні речі, які notifiable може зафіксувати на тип сповіщення — обидві в тому самому рядку, обидві за замовчуванням "не кастомізовано":
+
+- **`is_enabled`** — вимкнути конкретний тип повністю (напр. "не пиши мені про X, решта — можна"). Перевіряється автоматично в `BaseNotify::via()`:
+  ```php
+  if (!$this->manager()->isNotifyEnabled($this->getNotifyKey(), $notifiable)) {
+      return [];
+  }
+  ```
+- **`channels`** — обмежити *саме цей тип* підмножиною каналів, напр. "OrderOrdered — лише телеграмом", тоді як решта типів і далі йде за глобальним `getNotifyChannels()` цього notifiable. Тільки звужує, ніколи не розширює — перетинається з глобальним налаштуванням, тож не можна маршрутизувати в канал, який notifiable не підключив:
+  ```php
+  $override = $this->manager()->resolveNotifyUserChannels($this->getNotifyKey(), $notifiable); // null = без override
+  ```
+
+Обидва працюють для **будь-якої** Eloquent-моделі — жодного трейта чи інтерфейсу на notifiable не потрібно. Відсутність рядка = повний дефолт (увімкнено, без override каналів). Рядок з'являється лише тоді, коли щось явно зафіксовано — типово з форми налаштувань профілю:
+
+```php
+NotifyUserSetting::updateOrCreate(
+    ['notifiable_type' => $user->getMorphClass(), 'notifiable_id' => $user->getKey(), 'notify_key' => 'OrderOrdered'],
+    ['is_enabled' => true, 'channels' => ['telegram']],
+);
+```
+
+Щоб прочитати поточний стан поза `Notification` (напр. для тумблера у формі налаштувань) — або запит напряму до `NotifyUserSetting`, або фасад `NotifyTemplates::isNotifyEnabled($notifyKey, $user)` / `NotifyTemplates::resolveNotifyUserChannels($notifyKey, $user)`, або додати `HasNotifySettings` до моделі (там уже є `isNotifyEnabled()` поряд з `getNotifyChannels()`).
+
+Колонка `notifiable_id` — рядок, не integer FK, тому працює незалежно від того, автоінкрементні первинні ключі в додатку чи UUID.
 
 ---
 

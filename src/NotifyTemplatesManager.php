@@ -6,6 +6,7 @@ namespace Fomvasss\NotifyTemplates;
 
 use Fomvasss\NotifyTemplates\Models\NotifyRoleSubscription;
 use Fomvasss\NotifyTemplates\Models\NotifyTemplate as NotifyTemplateModel;
+use Fomvasss\NotifyTemplates\Models\NotifyUserSetting;
 use Fomvasss\NotifyTemplates\Notifications\BaseNotify;
 
 
@@ -194,5 +195,29 @@ class NotifyTemplatesManager
         $subscription = $subClass::resolve($roleKey, $notifyKey, $this->resolveTenantId($tenantId));
 
         return $subscription?->getDelaySeconds() ?? 0;
+    }
+
+    /**
+     * Whether the notifiable itself has opted out of this notify type — independent of role
+     * subscription/channels. Works for any Eloquent model, no interface/trait required on it.
+     */
+    public function isNotifyEnabled(string $notifyKey, mixed $notifiable): bool
+    {
+        /** @var class-string<NotifyUserSetting> $class */
+        $class = config('notify-templates.models.notify_user_setting', NotifyUserSetting::class);
+
+        return $class::isEnabledFor($notifiable, $notifyKey);
+    }
+
+    /**
+     * Per-notifiable, per-notify-type channel override (notify_user_settings.channels).
+     * Null = no override — caller falls back to the notifiable's own channel preference.
+     */
+    public function resolveNotifyUserChannels(string $notifyKey, mixed $notifiable): ?array
+    {
+        /** @var class-string<NotifyUserSetting> $class */
+        $class = config('notify-templates.models.notify_user_setting', NotifyUserSetting::class);
+
+        return $class::channelsFor($notifiable, $notifyKey);
     }
 }

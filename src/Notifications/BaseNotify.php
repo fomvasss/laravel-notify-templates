@@ -76,9 +76,22 @@ abstract class BaseNotify extends Notification
 
     public function via(mixed $notifiable): array
     {
+        // The notifiable itself opted out of this notify type — independent of role
+        // subscription/channels below.
+        if (!$this->manager()->isNotifyEnabled($this->getNotifyKey(), $notifiable)) {
+            return [];
+        }
+
         $userChannels = method_exists($notifiable, 'getNotifyChannels')
             ? $notifiable->getNotifyChannels()
             : [];
+
+        // Per-type channel override (notify_user_settings.channels) narrows the notifiable's
+        // global channel preference further, e.g. "this one type only via telegram".
+        $typeChannels = $this->manager()->resolveNotifyUserChannels($this->getNotifyKey(), $notifiable);
+        if ($typeChannels !== null) {
+            $userChannels = $userChannels ? array_intersect($userChannels, $typeChannels) : $typeChannels;
+        }
 
         $channels = $this->manager()->resolveChannels(
             $this->getNotifyKey(),

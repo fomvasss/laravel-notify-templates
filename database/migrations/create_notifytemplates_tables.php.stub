@@ -51,6 +51,24 @@ return new class extends Migration
             DB::statement("CREATE UNIQUE INDEX nrs_unique ON notify_role_subscriptions (role_key, notify_key, (COALESCE(tenant_id, '')))");
         }
 
+        Schema::create('notify_user_settings', function (Blueprint $table) {
+            $table->id();
+            // Polymorphic — deliberately not a hard FK to a specific "users" table, so the
+            // package stays usable with whatever notifiable model the host app has.
+            $table->string('notifiable_type');
+            // string, not unsignedBigInteger — host app's PK may be a UUID (as in itschats' User)
+            $table->string('notifiable_id');
+            $table->string('notify_key', 100);
+            // Absence of a row = enabled (default). A row only ever records an explicit opt-out/in.
+            $table->boolean('is_enabled')->default(true);
+            // Per-type channel override: e.g. this one type only via 'telegram', everything else
+            // still follows the notifiable's global getNotifyChannels(). null = no override.
+            $table->json('channels')->nullable();
+            $table->timestamps();
+
+            $table->unique(['notifiable_type', 'notifiable_id', 'notify_key'], 'nus_unique');
+        });
+
         // To enable multilingual subject/body via astrotomic/laravel-translatable,
         // create a separate translations table (subject/body above can stay as fallback):
         //
@@ -68,6 +86,7 @@ return new class extends Migration
     {
         // Schema::dropIfExists('notify_template_translations');
 
+        Schema::dropIfExists('notify_user_settings');
         Schema::dropIfExists('notify_role_subscriptions');
         Schema::dropIfExists('notify_templates');
     }

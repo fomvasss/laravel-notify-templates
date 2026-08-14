@@ -10,6 +10,7 @@ return [
     'tables' => [
         'notify_templates' => 'notify_templates',
         'notify_role_subscriptions' => 'notify_role_subscriptions',
+        'notify_user_settings' => 'notify_user_settings',
     ],
 
     /*
@@ -72,6 +73,7 @@ return [
     'models' => [
         'notify_template' => \Fomvasss\NotifyTemplates\Models\NotifyTemplate::class,
         'notify_role_subscription' => \Fomvasss\NotifyTemplates\Models\NotifyRoleSubscription::class,
+        'notify_user_setting' => \Fomvasss\NotifyTemplates\Models\NotifyUserSetting::class,
     ],
 
 ];
