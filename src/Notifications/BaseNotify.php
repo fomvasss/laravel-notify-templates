@@ -110,20 +110,13 @@ abstract class BaseNotify extends Notification
 
         $result = [];
 
-        // mail is silently skipped when the notifiable has no email property
-        if (in_array('mail', $channels) && !empty($notifiable->email)) {
-            $result[] = 'mail';
-        }
+        foreach ($channels as $channel) {
+            $mapped = $this->mapChannel($channel, $notifiable);
 
-        if (in_array('database', $channels)) {
-            $result[] = 'database';
+            if ($mapped !== null) {
+                $result[] = $mapped;
+            }
         }
-
-        if (in_array('broadcast', $channels)) {
-            $result[] = 'broadcast';
-        }
-
-        // Додаткові канали (telegram, sms тощо) — через трейт у конкретному класі, який викликає parent::via().
 
         // Guaranteed-delivery fallback ONLY for types the user can't configure (OTP and the
         // like) — those must go out even with no subscription row. For everything else an
@@ -142,6 +135,36 @@ abstract class BaseNotify extends Notification
         }
 
         return $result;
+    }
+
+    /**
+     * Map a resolved channel slug to what Laravel's Notification dispatcher expects — a channel
+     * name or class-string — or null to skip it (e.g. the notifiable has no route for it).
+     *
+     * THE extension point for host channels: override in your app's base notification class
+     * (or a trait) with a match on your slugs and fall through to parent::mapChannel() for the
+     * rest. Everything else — the opt-out gate, user channel preferences, subscription
+     * resolution, the guaranteed-delivery fallback, only()/except() — stays in via() and keeps
+     * applying to your channels too. Do NOT copy via() into the host app: every package update
+     * to the resolution chain would then need a manual sync.
+     *
+     *   protected function mapChannel(string $channel, mixed $notifiable): ?string
+     *   {
+     *       return match ($channel) {
+     *           'telegram' => $notifiable->routeNotificationForTelegram() ? 'telegram' : null,
+     *           'sms' => $notifiable->phone ? TurboSmsChannel::class : null,
+     *           default => parent::mapChannel($channel, $notifiable),
+     *       };
+     *   }
+     */
+    protected function mapChannel(string $channel, mixed $notifiable): ?string
+    {
+        return match ($channel) {
+            // mail is silently skipped when the notifiable has no email property
+            'mail' => !empty($notifiable->email) ? 'mail' : null,
+            'database', 'broadcast' => $channel,
+            default => null,
+        };
     }
 
     // -------------------------------------------------------------------------

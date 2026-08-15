@@ -194,8 +194,9 @@ final class OrderOrderedNotify extends BaseNotify implements ShouldQueue
 ```
 
 Хуки що можна перевизначати:
+- `mapChannel(string $channel, mixed $notifiable): ?string` — додавання власних каналів (telegram/sms/…), див. "Розширення в хост-проекті" нижче
 - `prepareText(string $text, mixed $notifiable): string` — заміна токенів/шорткодів
-- `via(mixed $notifiable): array` — розширення списку каналів (викликайте `parent::via()`)
+- `toMail(mixed $notifiable): MailMessage` — за замовчуванням subject + body через `->line()`; перевизначте для власного view
 - `resolveTemplate(string $channel): ?NotifyTemplate` — доступ до розв'язаного шаблону
 
 ### only() / except()
@@ -207,6 +208,71 @@ $user->notify((new OrderOrderedNotify('client', $order))->only(['mail']));
 // усі розв'язані канали крім sms
 $user->notify((new OrderOrderedNotify('client', $order))->except(['sms']));
 ```
+
+---
+
+## Розширення в хост-проекті
+
+Типова схема — один абстрактний базовий клас у застосунку, що розширює `BaseNotify` і додає канали проекту + токенізацію; всі конкретні Notify наслідують уже його:
+
+```php
+namespace App\Notifications;
+
+use Fomvasss\NotifyTemplates\Notifications\BaseNotify;
+use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Support\Str;
+use NotificationChannels\Telegram\TelegramMessage;
+
+abstract class BaseNotification extends BaseNotify
+{
+    // 1. Власні канали: мапінг слага каналу підписки в назву/class-string каналу,
+    //    або null щоб пропустити (нема маршруту). Це ЄДИНИЙ метод, який треба чіпати —
+    //    гейт opt-out, канальні преференції юзера, резолв підписки, фолбек для
+    //    user_configurable=false і only()/except() застосовуються до цих каналів автоматично.
+    protected function mapChannel(string $channel, mixed $notifiable): ?string
+    {
+        return match ($channel) {
+            'telegram' => $notifiable->routeNotificationForTelegram() ? 'telegram' : null,
+            'sms' => $notifiable->phone ? TurboSmsChannel::class : null,
+            default => parent::mapChannel($channel, $notifiable),
+        };
+    }
+
+    // 2. По to{Channel}() на кожен доданий канал. getMessengerBody() резолвить слот
+    //    'messenger' (з фолбеком на 'mail') і проганяє prepareText().
+    //    У месенджерів жорсткі ліміти — обрізайте і чистіть HTML під кожен канал.
+    public function toTelegram(mixed $notifiable): TelegramMessage
+    {
+        return TelegramMessage::create()
+            ->options(['parse_mode' => 'HTML'])
+            ->line($this->getMessengerBody($notifiable));
+    }
+
+    public function toTurboSms(mixed $notifiable): string
+    {
+        return Str::limit(strip_tags($this->getMessengerBody($notifiable)), 660);
+    }
+
+    // 3. Токенізація — застосовується до subject/body усіх каналів
+    //    (приклад із fomvasss/laravel-str-tokens; підійде будь-який шаблонізатор)
+    protected function prepareText(string $text, mixed $notifiable): string
+    {
+        return \StrToken::setEntity($notifiable)->setText($text)->replace();
+    }
+
+    // 4. Опційно: власний mail-view замість дефолтного ->line()
+    public function toMail(mixed $notifiable): MailMessage
+    {
+        $template = $this->resolveTemplate('mail');
+
+        return (new MailMessage())
+            ->subject($this->prepareText($template?->subject ?: $this->getSubjectDefault(), $notifiable))
+            ->view('mails.plain', ['body' => $this->prepareText($template?->body ?: $this->getBodyDefault(), $notifiable)]);
+    }
+}
+```
+
+> **Не копіюйте `via()` у хост-проект.** Перевизначайте `mapChannel()`. Скопійований `via()` заморожує ланцюг резолву на момент копіювання — кожен наступний фікс пакету (обробка opt-out, семантика фолбеку, …) мовчки не застосовується, поки не синхронізуєте копію вручну.
 
 ---
 
@@ -462,9 +528,10 @@ NotifyTemplates::resolveDelay(string $notifyKey, string $roleKey, ?string $tenan
        порожній → fallback до config('notify-templates.default_channels')
        перетинається з об'єднаним результатом кроків 1+2 (notifiable може лише відписатись, не додати канал, якого роль не дозволяє)
        ↓
-4. routeNotificationFor*() / перевірка властивості (напр. mail потребує ->email)
+4. mapChannel() — routeNotificationFor*() / перевірка властивості (напр. mail потребує ->email)
        фізична перевірка: чи є у notifiable реально email / telegram id / тощо?
        канал мовчки відкидається, якщо маршрут/властивість порожні
+       хост-проект додає власні канали перевизначенням цього хука (див. "Розширення в хост-проекті")
        якщо нічого не вижило → [] ("не надсилати"); лише типи з 'user_configurable' => false
        отримують fallback до config('notify-templates.default_channels') (гарантована доставка OTP тощо)
        ↓

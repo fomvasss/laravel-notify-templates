@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-08-16
+
+### Added
+- `mapChannel(string $channel, mixed $notifiable): ?string` — protected hook on `BaseNotify`, THE extension point for host channels: map a subscription channel slug to a channel name/class-string (or `null` to skip). Override it in your app's base notification class instead of copying `via()` — the opt-out gate, user channel preferences, subscription resolution, the `user_configurable` fallback and `only()`/`except()` keep applying to your channels automatically. Built-in mapping (mail with the email check, database, broadcast) is unchanged
+- README (en+uk): "Extending in the host app" section with a full host base-class example (mapChannel, `to{Channel}()` via `getMessengerBody()`, `prepareText()` tokens, custom mail view) and an explicit warning against copying `via()`
+
 ## [0.6.0] - 2026-08-16
 
 ### Fixed

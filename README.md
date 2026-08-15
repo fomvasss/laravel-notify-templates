@@ -390,10 +390,11 @@ Extend `BaseNotify`. Generate with `php artisan notify:make`, fill `typeDefiniti
 `getBodyDefault()` and `getSubjectDefault()` are derived automatically from `typeDefinition()['defaults']['mail']` — no need to define them.
 
 **Hooks available for the host app to override:**
+- `mapChannel(string $channel, mixed $notifiable): ?string` — add custom channels (telegram/sms/…); see [Extending in the host app](#extending-in-the-host-app)
 - `prepareText(string $text, mixed $notifiable): string` — token replacement; returns `$text` as-is by default
-- `via(mixed $notifiable): array` — `parent::via()` handles mail/database/broadcast; extend to add telegram/sms/etc.
+- `toMail(mixed $notifiable): MailMessage` — default renders subject + body via `->line()`; override for a custom view
 
-`manager()` and `resolveTemplate()` are `protected` — accessible from a trait mixed into concrete classes.
+`manager()` and `resolveTemplate()` are `protected` — accessible from a trait or base class mixed into concrete classes.
 
 ```php
 use Fomvasss\NotifyTemplates\Notifications\BaseNotify;
@@ -446,6 +447,71 @@ $user->notify((new UserOtpNotify(roleKey: 'client', code: $code))->only(['mail']
 // send via all resolved channels except sms
 $user->notify((new OrderOrderedNotify(roleKey: 'client'))->except(['sms']));
 ```
+
+---
+
+## Extending in the host app
+
+The typical setup is one abstract base class in the app that extends `BaseNotify` and adds project channels + token processing; every concrete Notify then extends it:
+
+```php
+namespace App\Notifications;
+
+use Fomvasss\NotifyTemplates\Notifications\BaseNotify;
+use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Support\Str;
+use NotificationChannels\Telegram\TelegramMessage;
+
+abstract class BaseNotification extends BaseNotify
+{
+    // 1. Custom channels: map a subscription channel slug to a channel name / class-string,
+    //    or null to skip (no route). This is the ONLY method to touch — the opt-out gate,
+    //    user channel preferences, subscription resolution, the user_configurable fallback
+    //    and only()/except() all keep applying to these channels automatically.
+    protected function mapChannel(string $channel, mixed $notifiable): ?string
+    {
+        return match ($channel) {
+            'telegram' => $notifiable->routeNotificationForTelegram() ? 'telegram' : null,
+            'sms' => $notifiable->phone ? TurboSmsChannel::class : null,
+            default => parent::mapChannel($channel, $notifiable),
+        };
+    }
+
+    // 2. A to{Channel}() per added channel. getMessengerBody() resolves the 'messenger'
+    //    template slot (falling back to 'mail') and runs prepareText() on it.
+    //    Messengers have hard message limits — trim and strip HTML per channel.
+    public function toTelegram(mixed $notifiable): TelegramMessage
+    {
+        return TelegramMessage::create()
+            ->options(['parse_mode' => 'HTML'])
+            ->line($this->getMessengerBody($notifiable));
+    }
+
+    public function toTurboSms(mixed $notifiable): string
+    {
+        return Str::limit(strip_tags($this->getMessengerBody($notifiable)), 660);
+    }
+
+    // 3. Token replacement — applied to subject/body of every channel
+    //    (example uses fomvasss/laravel-str-tokens; any templating works)
+    protected function prepareText(string $text, mixed $notifiable): string
+    {
+        return \StrToken::setEntity($notifiable)->setText($text)->replace();
+    }
+
+    // 4. Optional: custom mail view instead of the default ->line()
+    public function toMail(mixed $notifiable): MailMessage
+    {
+        $template = $this->resolveTemplate('mail');
+
+        return (new MailMessage())
+            ->subject($this->prepareText($template?->subject ?: $this->getSubjectDefault(), $notifiable))
+            ->view('mails.plain', ['body' => $this->prepareText($template?->body ?: $this->getBodyDefault(), $notifiable)]);
+    }
+}
+```
+
+> **Do not copy `via()` into the host app.** Override `mapChannel()` instead. A copied `via()` freezes the resolution chain at the moment of copying — every package fix to it (opt-out handling, fallback semantics, …) then silently doesn't apply until you manually sync the copy.
 
 ---
 
@@ -578,9 +644,10 @@ Every notification goes through a fixed resolution chain inside `via()`. Each st
        empty → falls back to config('notify-templates.default_channels')
        intersected with the combined result of steps 1+2 (a notifiable can only opt out, never add channels the role doesn't allow)
        ↓
-4. routeNotificationFor*() / property checks (e.g. mail needs ->email)
+4. mapChannel() — routeNotificationFor*() / property checks (e.g. mail needs ->email)
        physical check: does the notifiable actually have an email / telegram id / etc.?
        channel dropped silently if the route/property is empty
+       host apps add their channels by overriding this hook (see "Extending in the host app")
        if nothing survives → [] ("don't send"); only 'user_configurable' => false types
        fall back to config('notify-templates.default_channels') here (guaranteed delivery for OTP and the like)
        ↓
