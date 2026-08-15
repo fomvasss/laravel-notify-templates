@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-08-16
+
+### Fixed
+- `notify_user_settings.channels = []` (notifiable disabled every channel for a type) now actually suppresses delivery: `via()` returns `[]` instead of falling through to `resolveChannels()`, which treated the empty array as "no preference" and returned the full subscription channel list. Same for an override that has no overlap with the notifiable's global channel preference
+- `notifyKey()` and `notify:make` now strip only the trailing `Notify` suffix from the class name instead of every occurrence (`MyNotifyDigestNotify` → `MyNotifyDigest`, was `MyDigest`)
+
+### Changed
+- **Behavior change**: the `default_channels` fallback in `via()` now applies only to types with `'user_configurable' => false` (guaranteed delivery for OTP and the like). For regular types an empty resolution — no/inactive subscription, or user opt-outs leaving nothing — means "don't send" and is no longer silently overridden with mail. If your host app duplicates `via()` instead of calling `parent::via()`, sync this change there too
+
 ## [0.5.1] - 2026-08-14
 
 ### Fixed

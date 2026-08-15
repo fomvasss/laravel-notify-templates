@@ -41,7 +41,7 @@ class MakeNotifyCommand extends GeneratorCommand
     {
         $stub = parent::replaceClass($stub, $name);
 
-        $notifyKey = str_replace('Notify', '', class_basename($name));
+        $notifyKey = preg_replace('/Notify$/', '', class_basename($name));
 
         return str_replace('{{ notifyKey }}', $notifyKey, $stub);
     }

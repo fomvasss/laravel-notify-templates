@@ -38,7 +38,7 @@ abstract class BaseNotify extends Notification
     // Override only if class name doesn't follow the {NotifyKey}Notify convention.
     public static function notifyKey(): string
     {
-        return str_replace('Notify', '', class_basename(static::class));
+        return preg_replace('/Notify$/', '', class_basename(static::class));
     }
 
     public function getNotifyKey(): string
@@ -91,6 +91,14 @@ abstract class BaseNotify extends Notification
         $typeChannels = $this->manager()->resolveNotifyUserChannels($this->getNotifyKey(), $notifiable);
         if ($typeChannels !== null) {
             $userChannels = $userChannels ? array_intersect($userChannels, $typeChannels) : $typeChannels;
+
+            // An override that leaves nothing ([] stored, or no overlap with the global
+            // preference) is an explicit opt-out of every channel for this type. Without this
+            // check the empty array would fall through to resolveChannels(), which treats
+            // empty $userChannels as "no preference" and returns the full subscription list.
+            if (!$userChannels) {
+                return [];
+            }
         }
 
         $channels = $this->manager()->resolveChannels(
@@ -117,7 +125,13 @@ abstract class BaseNotify extends Notification
 
         // Додаткові канали (telegram, sms тощо) — через трейт у конкретному класі, який викликає parent::via().
 
-        $result = $result ?: config('notify-templates.default_channels', ['mail']);
+        // Guaranteed-delivery fallback ONLY for types the user can't configure (OTP and the
+        // like) — those must go out even with no subscription row. For everything else an
+        // empty result is a legitimate "don't send": user opt-outs and is_active=false must
+        // not be silently overridden with default_channels.
+        if (!$result && !$this->manager()->isUserConfigurable($this->getNotifyKey())) {
+            $result = config('notify-templates.default_channels', ['mail']);
+        }
 
         if ($this->onlyChannels) {
             $result = array_values(array_intersect($result, $this->onlyChannels));

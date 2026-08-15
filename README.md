@@ -16,6 +16,8 @@ DB-based notification templates for Laravel. Manages notification templates, rol
 
 ## Installation
 
+Requires PHP 8.2+, Laravel 10–13, and PostgreSQL or MySQL 8.0.13+ (the migration uses functional unique indexes on `COALESCE(...)`; MariaDB does not support them).
+
 ```bash
 composer require fomvasss/laravel-notify-templates
 ```
@@ -569,6 +571,7 @@ Every notification goes through a fixed resolution chain inside `via()`. Each st
        per-type override (notify_user_settings.channels) — narrows step 1 further, only for this one type
        'user_configurable' => false → always null, the row (if any) is ignored
        null → no narrowing beyond step 1
+       [] (or no overlap with step 1) → explicit opt-out of every channel, via() returns []
        ↓
 3. notify_role_subscriptions.channels   (set in admin UI)
        which channels are enabled for this role+notify pair
@@ -578,7 +581,8 @@ Every notification goes through a fixed resolution chain inside `via()`. Each st
 4. routeNotificationFor*() / property checks (e.g. mail needs ->email)
        physical check: does the notifiable actually have an email / telegram id / etc.?
        channel dropped silently if the route/property is empty
-       if nothing survives → falls back to config('notify-templates.default_channels')
+       if nothing survives → [] ("don't send"); only 'user_configurable' => false types
+       fall back to config('notify-templates.default_channels') here (guaranteed delivery for OTP and the like)
        ↓
 5. only() / except()   (call-site override in code)
        applied last, always wins
@@ -588,8 +592,9 @@ Every notification goes through a fixed resolution chain inside `via()`. Each st
 
 | Scenario | Result |
 |---|---|
-| No subscriptions in DB, nothing configured | `mail` (from `default_channels`) |
+| No subscriptions in DB, nothing configured | nothing sent (`user_configurable` => `false` types: `mail` from `default_channels`) |
 | Subscription active, channels `[]` in DB | `mail` (from `default_channels`) |
+| Subscription active, user's `notify_user_settings.channels = []` for this type | nothing sent — the notifiable disabled the whole type |
 | Subscription channels `['mail','telegram']`, user has no telegram id | `mail` only |
 | Subscription channels `['mail','telegram']`, user `getNotifyChannels()` returns `['mail']` | `mail` only |
 | Subscription channels `['mail','telegram']`, user prefers both, but has a `notify_user_settings.channels = ['telegram']` override for this one type | `telegram` only — for this type; other types are unaffected |

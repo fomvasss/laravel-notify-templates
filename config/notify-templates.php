@@ -23,8 +23,10 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Default channels used when subscription has no channels configured,
-    | or when via() resolves to nothing entirely.
+    | Default channels used when subscription has no channels configured.
+    | Also the guaranteed-delivery fallback in via(), but only for types with
+    | 'user_configurable' => false (e.g. OTP) — for regular types an empty
+    | resolution means "don't send" and is never overridden.
     |--------------------------------------------------------------------------
     */
     'default_channels' => ['mail'],

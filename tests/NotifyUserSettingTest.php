@@ -226,6 +226,59 @@ class NotifyUserSettingTest extends TestCase
         $this->assertSame(['mail'], $result);
     }
 
+    public function test_via_returns_empty_when_override_disables_all_channels(): void
+    {
+        $user = SampleUser::withId(1);
+        $user->email = 'test@example.com';
+
+        NotifyRoleSubscription::create([
+            'notify_key' => 'SampleEvent',
+            'role_key' => 'client',
+            'tenant_id' => null,
+            'is_active' => true,
+            'personal_only' => false,
+            'channels' => ['mail', 'database'],
+            'options' => [],
+        ]);
+
+        // channels = [] — "disable this type entirely" (the profile-matrix contract)
+        NotifyUserSetting::create([
+            'notifiable_type' => $user->getMorphClass(),
+            'notifiable_id' => $user->getKey(),
+            'notify_key' => 'SampleEvent',
+            'channels' => [],
+        ]);
+
+        $this->assertSame([], (new SampleNotify('client'))->via($user));
+    }
+
+    public function test_via_returns_empty_when_override_has_no_overlap_with_global_channels(): void
+    {
+        $user = SampleUser::withId(1);
+        $user->email = 'test@example.com';
+
+        NotifyRoleSubscription::create([
+            'notify_key' => 'SampleEvent',
+            'role_key' => 'client',
+            'tenant_id' => null,
+            'is_active' => true,
+            'personal_only' => false,
+            'channels' => ['mail', 'database'],
+            'options' => [],
+        ]);
+
+        NotifyUserSetting::create([
+            'notifiable_type' => $user->getMorphClass(),
+            'notifiable_id' => $user->getKey(),
+            'notify_key' => 'SampleEvent',
+            'channels' => ['database'],
+        ]);
+
+        $user->notifyChannels = ['mail'];
+
+        $this->assertSame([], (new SampleNotify('client'))->via($user));
+    }
+
     // --- user_configurable: false (e.g. OTP) — opt-out/channel-override never apply ---
 
     public function test_is_user_configurable_defaults_to_true(): void

@@ -22,6 +22,8 @@ DB-шаблони сповіщень для Laravel. Управляє шабло
 
 ## Встановлення
 
+Вимагає PHP 8.2+, Laravel 10–13 і PostgreSQL або MySQL 8.0.13+ (міграція використовує функціональні unique-індекси на `COALESCE(...)`; MariaDB їх не підтримує).
+
 ```bash
 composer require fomvasss/laravel-notify-templates
 ```
@@ -453,6 +455,7 @@ NotifyTemplates::resolveDelay(string $notifyKey, string $roleKey, ?string $tenan
        per-type override (notify_user_settings.channels) — звужує крок 1, лише для цього одного типу
        'user_configurable' => false → завжди null, рядок (якщо є) ігнорується
        null → без додаткового звуження понад крок 1
+       [] (або нема перетину з кроком 1) → явна відмова від усіх каналів, via() повертає []
        ↓
 3. notify_role_subscriptions.channels   (задається в адмін-UI)
        які канали увімкнені для пари роль+тип сповіщення
@@ -462,7 +465,8 @@ NotifyTemplates::resolveDelay(string $notifyKey, string $roleKey, ?string $tenan
 4. routeNotificationFor*() / перевірка властивості (напр. mail потребує ->email)
        фізична перевірка: чи є у notifiable реально email / telegram id / тощо?
        канал мовчки відкидається, якщо маршрут/властивість порожні
-       якщо нічого не вижило → fallback до config('notify-templates.default_channels')
+       якщо нічого не вижило → [] ("не надсилати"); лише типи з 'user_configurable' => false
+       отримують fallback до config('notify-templates.default_channels') (гарантована доставка OTP тощо)
        ↓
 5. only() / except()   (виклик у коді)
        застосовується останнім, завжди має пріоритет
@@ -472,8 +476,9 @@ NotifyTemplates::resolveDelay(string $notifyKey, string $roleKey, ?string $tenan
 
 | Сценарій | Результат |
 |---|---|
-| Немає підписок у БД, нічого не налаштовано | `mail` (з `default_channels`) |
+| Немає підписок у БД, нічого не налаштовано | нічого не надсилається (типи з `user_configurable` => `false`: `mail` з `default_channels`) |
 | Підписка активна, `channels = []` у БД | `mail` (з `default_channels`) |
+| Підписка активна, у юзера `notify_user_settings.channels = []` для цього типу | нічого не надсилається — notifiable вимкнув тип цілком |
 | Підписка `['mail','telegram']`, у юзера нема telegram id | тільки `mail` |
 | Підписка `['mail','telegram']`, `getNotifyChannels()` повертає `['mail']` | тільки `mail` |
 | Підписка `['mail','telegram']`, юзер хоче обидва, але для цього типу є `notify_user_settings.channels = ['telegram']` | тільки `telegram` — лише для цього типу, інші не зачіпає |
