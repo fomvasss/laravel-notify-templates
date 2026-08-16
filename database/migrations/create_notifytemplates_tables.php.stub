@@ -56,7 +56,7 @@ return new class extends Migration
             // Polymorphic — deliberately not a hard FK to a specific "users" table, so the
             // package stays usable with whatever notifiable model the host app has.
             $table->string('notifiable_type');
-            // string, not unsignedBigInteger — host app's PK may be a UUID (as in itschats' User)
+            // string, not unsignedBigInteger — host app's PK may be a UUID
             $table->string('notifiable_id');
             $table->string('notify_key', 100);
             // Absence of a row = enabled (default). A row only ever records an explicit opt-out/in.
