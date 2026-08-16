@@ -33,9 +33,10 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Tenant ID resolver.
-    | null = single-tenant. Set to a callable that returns the tenant ID string,
-    | or bind NotifyTenantResolverInterface in your ServiceProvider.
+    | Tenant ID.
+    | null = single-tenant. Set to a plain string or a callable returning one —
+    | used as the fallback in resolveTemplate()/resolveChannels()/resolveDelay()
+    | when no explicit $tenantId is passed.
     |--------------------------------------------------------------------------
     */
     'tenant_id' => null,
