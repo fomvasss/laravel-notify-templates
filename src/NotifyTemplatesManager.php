@@ -263,7 +263,8 @@ class NotifyTemplatesManager
         $log = $class::query()
             ->where('channel', $channel)
             ->where('external_id', $externalId)
-            ->latest('id')
+            // not latest('id') — host apps may use UUID keys
+            ->latest()
             ->first();
 
         if (!$log || !$log->canMoveTo($status)) {

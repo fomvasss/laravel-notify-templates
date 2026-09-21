@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-09-21
+
+### Fixed
+- `updateDelivery()` picked the most recent log row by `id`, which is random order when the host app uses UUID keys; now by `created_at`
+
 ## [0.8.0] - 2026-09-21
 
 ### Added
