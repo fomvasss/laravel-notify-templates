@@ -157,15 +157,46 @@ Or statically via config:
 | `tokens` | array | Token hints for the template editor: `[['key' => '[order:number]', 'name' => 'Номер']]` |
 | `channels` | array | Channels this notify type supports. Empty (default) — falls back to `config('notify-templates.channels')` |
 | `defaults` | array | Default subject/body per channel slot, used as placeholder in the editor when no DB template exists |
+| `user_configurable` | bool | `false` — the notifiable can't opt out of the type or restrict its channels, and an empty channel resolution falls back to `default_channels`. Default `true`. See [Non-configurable types](#non-configurable-types-otp-security-codes) |
+| `log_body` | bool | `false` — the delivery log stores the subject only, never the body (OTP codes, passwords). Default `true`. See [Delivery log](#delivery-log) |
 
 `tokens` and `defaults` are UI metadata — the package does not use them for sending. `getBodyDefault()` / `getSubjectDefault()` on `BaseNotify` read from `defaults.mail` automatically. Keep them in sync.
 
 **Custom keys.** `registerType()` stores the whole array returned by `typeDefinition()` as-is — any key beyond the
 table above survives untouched and comes back from `NotifyTemplates::getType($notifyKey)['your_key']`. Useful for
-project-specific extensibility without forking the package — e.g. an `allowed_roles` array to restrict which roles
-a notify type can even be configured for (a type whose audience is structurally fixed — an OTP code always goes
-directly to the user logging in — gains nothing from a role you'll never use), enforced in your own admin
-controller/UI, not by the package.
+project-specific behavior without forking the package. The package itself ignores these keys: your admin
+controller, UI or import enforces them. Two examples from a production app:
+
+```php
+public static function typeDefinition(): array
+{
+    return [
+        'key' => 'UserOtp',
+        // ...
+        'user_configurable' => false,
+        // Only these roles can have a subscription/template for this type. An OTP code always goes to the
+        // user who is logging in, so a template for any other role would never be used
+        'allowed_roles' => ['client'],
+        // Sent directly ($user->notify()) in response to the user's own action, not through a role resolver.
+        // Combined with user_configurable = false, a disabled subscription falls back to default_channels
+        // and the mail goes out anyway, so the admin UI shows the "active" toggle locked instead
+        'always_sent' => true,
+    ];
+}
+```
+
+```php
+// Admin matrix: hide cells for roles the type doesn't allow
+$allowed = NotifyTemplates::getType($key)['allowed_roles'] ?? null;
+$roleAllowed = $allowed === null || in_array($role, $allowed, true);
+
+// Subscription toggle: refuse to disable what can't be disabled
+abort_if(NotifyTemplates::getType($key)['always_sent'] ?? false, 422, 'This type is always sent');
+```
+
+`always_sent` matters only for types sent without a role resolver. A type with `user_configurable = false` that
+still goes through `NotifyRoleResolverInterface` is disabled for real by an inactive subscription: the resolver
+returns no recipients for that role.
 
 ### settings field
 
