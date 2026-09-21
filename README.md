@@ -703,11 +703,19 @@ Opt-in journal of every sent notification: one `notify_logs` row per notificatio
     'retention_days' => 90,
     'external_id_resolvers' => [
         'mail' => \Fomvasss\NotifyTemplates\Resolvers\MailMessageIdResolver::class,
+        'telegram' => \Fomvasss\NotifyTemplates\Resolvers\TelegramMessageIdResolver::class,
     ],
+    'content_resolvers' => [
+        'mail' => \Fomvasss\NotifyTemplates\Resolvers\MailContentResolver::class,
+        'telegram' => \Fomvasss\NotifyTemplates\Resolvers\TelegramContentResolver::class,
+    ],
+    'store_body' => true,
 ],
 ```
 
-Existing installs: `php artisan vendor:publish --tag=notify-templates-migrations` publishes only the missing `create_notify_logs_table` migration.
+`mergeConfigFrom()` merges only top-level keys, so a published config needs the whole `log` block, including the new keys after an upgrade.
+
+Existing installs: `php artisan vendor:publish --tag=notify-templates-migrations` publishes only the migrations you don't have yet (`create_notify_logs_table`, `add_content_to_notify_logs_table`).
 
 What gets written:
 
@@ -715,6 +723,7 @@ What gets written:
 - `NotificationSent` → `sent`, plus `external_id` (the provider's message id) from the channel's resolver.
 - `NotificationFailed` → `failed` with the error. When a channel swallows its own exception (dispatches `NotificationFailed` and returns), the `NotificationSent` that Laravel fires right after does not overwrite the failure.
 - A queue retry of the same notification reuses the row and increments `attempts`.
+- `subject` and `body` hold what was actually sent, tokens already substituted, taken from the channel's response by `content_resolvers`: the mail's subject and HTML, the Telegram message text. The subject is always stored when the channel has one. The body can be turned off globally with `store_body => false`, or per type with `'log_body' => false` in `typeDefinition()`. Use the latter for OTP codes, generated passwords and anything else that must not be readable in the log.
 - `route` holds the actual address: email, chat id, phone. `notifiable_type/id` are `null` for on-demand (`Notification::route()`) recipients.
 
 ### Delivery status

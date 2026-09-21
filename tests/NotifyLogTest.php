@@ -5,11 +5,15 @@ declare(strict_types=1);
 namespace Fomvasss\NotifyTemplates\Tests;
 
 use Fomvasss\NotifyTemplates\Models\NotifyLog;
+use Fomvasss\NotifyTemplates\Notifications\BaseNotify;
 use Fomvasss\NotifyTemplates\NotifyTemplatesManager;
 use Fomvasss\NotifyTemplates\Tests\Fixtures\FakeSmsChannel;
 use Fomvasss\NotifyTemplates\Tests\Fixtures\FakeSmsIdResolver;
 use Fomvasss\NotifyTemplates\Tests\Fixtures\NotifiableUser;
+use Fomvasss\NotifyTemplates\Resolvers\TelegramContentResolver;
+use Fomvasss\NotifyTemplates\Resolvers\TelegramMessageIdResolver;
 use Fomvasss\NotifyTemplates\Tests\Fixtures\SampleNotify;
+use Fomvasss\NotifyTemplates\Tests\Fixtures\SecretNotify;
 use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Facades\Notification;
 
@@ -31,7 +35,7 @@ class NotifyLogTest extends TestCase
         FakeSmsChannel::$mode = 'ok';
     }
 
-    private function send(mixed $notifiable, ?SampleNotify $notify = null, string $channel = 'mail'): void
+    private function send(mixed $notifiable, ?BaseNotify $notify = null, string $channel = 'mail'): void
     {
         Notification::sendNow($notifiable, $notify ?? new SampleNotify('client'), [$channel]);
     }
@@ -163,5 +167,45 @@ class NotifyLogTest extends TestCase
 
         $this->assertSame(1, (new NotifyLog())->pruneAll());
         $this->assertSame(0, NotifyLog::count());
+    }
+
+    public function test_mail_body_is_logged_by_default(): void
+    {
+        $this->send(NotifiableUser::withId(1, 'a@example.com'));
+
+        $this->assertStringContainsString('<html', (string) NotifyLog::sole()->body);
+    }
+
+    public function test_type_can_opt_out_of_body(): void
+    {
+        $this->send(NotifiableUser::withId(1, 'a@example.com'), new SecretNotify('client'));
+
+        $log = NotifyLog::sole();
+        $this->assertSame('Your code', $log->subject);
+        $this->assertNull($log->body);
+    }
+
+    public function test_store_body_config_disables_body(): void
+    {
+        config(['notify-templates.log.store_body' => false]);
+
+        $this->send(NotifiableUser::withId(1, 'a@example.com'));
+
+        $this->assertNull(NotifyLog::sole()->body);
+    }
+
+    public function test_telegram_resolvers_read_bot_api_response(): void
+    {
+        $single = ['ok' => true, 'result' => ['message_id' => 55, 'text' => 'Hello']];
+        $chunked = [
+            ['ok' => true, 'result' => ['message_id' => 56, 'text' => 'Part 1']],
+            ['ok' => true, 'result' => ['message_id' => 57, 'text' => 'Part 2']],
+        ];
+
+        $this->assertSame('55', (new TelegramMessageIdResolver())->resolve($single));
+        $this->assertSame('56', (new TelegramMessageIdResolver())->resolve($chunked));
+        $this->assertSame(['body' => 'Hello'], (new TelegramContentResolver())->resolve($single));
+        $this->assertSame(['body' => "Part 1\nPart 2"], (new TelegramContentResolver())->resolve($chunked));
+        $this->assertSame([], (new TelegramContentResolver())->resolve(null));
     }
 }

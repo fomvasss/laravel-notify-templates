@@ -1,0 +1,29 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+// For installs that created notify_logs on 0.8.x. On a fresh install the create migration
+// already has these columns and this one is a no-op.
+return new class extends Migration
+{
+    public function up(): void
+    {
+        if (Schema::hasColumn('notify_logs', 'subject')) {
+            return;
+        }
+
+        Schema::table('notify_logs', function (Blueprint $table) {
+            $table->string('subject')->nullable()->after('route');
+            $table->longText('body')->nullable()->after('subject');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('notify_logs', function (Blueprint $table) {
+            $table->dropColumn(['subject', 'body']);
+        });
+    }
+};

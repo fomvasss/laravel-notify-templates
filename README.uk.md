@@ -569,11 +569,19 @@ NotifyTemplates::updateDelivery(string $channel, string $externalId, string $sta
     'retention_days' => 90,
     'external_id_resolvers' => [
         'mail' => \Fomvasss\NotifyTemplates\Resolvers\MailMessageIdResolver::class,
+        'telegram' => \Fomvasss\NotifyTemplates\Resolvers\TelegramMessageIdResolver::class,
     ],
+    'content_resolvers' => [
+        'mail' => \Fomvasss\NotifyTemplates\Resolvers\MailContentResolver::class,
+        'telegram' => \Fomvasss\NotifyTemplates\Resolvers\TelegramContentResolver::class,
+    ],
+    'store_body' => true,
 ],
 ```
 
-Для наявних інсталяцій `php artisan vendor:publish --tag=notify-templates-migrations` опублікує тільки відсутню міграцію `create_notify_logs_table`.
+`mergeConfigFrom()` зливає лише ключі верхнього рівня, тож в опублікованому конфігу має бути весь блок `log`, разом із новими ключами після оновлення.
+
+Для наявних інсталяцій `php artisan vendor:publish --tag=notify-templates-migrations` опублікує лише ті міграції, яких у вас ще немає (`create_notify_logs_table`, `add_content_to_notify_logs_table`).
 
 Що пишеться:
 
@@ -581,6 +589,7 @@ NotifyTemplates::updateDelivery(string $channel, string $externalId, string $sta
 - `NotificationSent` ставить `sent` і `external_id` (id повідомлення в провайдера), який дістає резолвер каналу.
 - `NotificationFailed` ставить `failed` і текст помилки. Якщо канал сам ловить свій виняток (шле `NotificationFailed` і нормально повертається), то `NotificationSent`, який Laravel кидає одразу після, помилку не перезапише.
 - Повтор тієї ж нотифікації з черги використовує той самий рядок і збільшує `attempts`.
+- У `subject` і `body` — те, що фактично пішло, з уже підставленими токенами. Дістається з відповіді каналу через `content_resolvers`: тема й HTML листа, текст повідомлення в Telegram. Тема пишеться завжди, якщо канал її має. Тіло можна вимкнути глобально (`store_body => false`) або для окремого типу через `'log_body' => false` у `typeDefinition()`. Останнє — для OTP-кодів, згенерованих паролів і всього, що не має бути видно в журналі.
 - У `route` — фактична адреса: email, chat id, телефон. `notifiable_type/id` дорівнюють `null` для on-demand отримувачів (`Notification::route()`).
 
 ### Статус доставки

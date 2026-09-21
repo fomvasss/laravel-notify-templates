@@ -47,7 +47,7 @@ class NotifyTemplatesServiceProvider extends ServiceProvider
     private function publishMigrations(): void
     {
         // notify_logs ships as its own migration so existing installs can publish just it
-        foreach (['create_notifytemplates_tables', 'create_notify_logs_table'] as $migration) {
+        foreach (['create_notifytemplates_tables', 'create_notify_logs_table', 'add_content_to_notify_logs_table'] as $migration) {
             if (!glob(database_path("migrations/*_{$migration}.php"))) {
                 $this->publishes([
                     __DIR__."/../database/migrations/{$migration}.php.stub" => database_path(

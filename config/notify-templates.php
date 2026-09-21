@@ -92,6 +92,10 @@ return [
     |   external_id_resolvers — channel (as returned by via()) => class
     |     implementing ExternalIdResolverInterface: extracts the provider
     |     message id that NotifyTemplates::updateDelivery() matches by
+    |   content_resolvers — channel => class implementing
+    |     ContentResolverInterface: extracts the sent subject/body
+    |   store_body — false keeps only the subject. Per type:
+    |     typeDefinition()['log_body'] = false (OTP codes, passwords)
     |--------------------------------------------------------------------------
     */
     'log' => [
@@ -99,7 +103,13 @@ return [
         'retention_days' => 90,
         'external_id_resolvers' => [
             'mail' => \Fomvasss\NotifyTemplates\Resolvers\MailMessageIdResolver::class,
+            'telegram' => \Fomvasss\NotifyTemplates\Resolvers\TelegramMessageIdResolver::class,
         ],
+        'content_resolvers' => [
+            'mail' => \Fomvasss\NotifyTemplates\Resolvers\MailContentResolver::class,
+            'telegram' => \Fomvasss\NotifyTemplates\Resolvers\TelegramContentResolver::class,
+        ],
+        'store_body' => true,
     ],
 
 ];

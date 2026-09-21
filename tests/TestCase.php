@@ -78,6 +78,8 @@ abstract class TestCase extends OrchestraTestCase
             $table->string('notifiable_type')->nullable();
             $table->string('notifiable_id')->nullable();
             $table->string('route')->nullable();
+            $table->string('subject')->nullable();
+            $table->longText('body')->nullable();
             $table->string('status', 20);
             $table->string('external_id')->nullable();
             $table->text('error')->nullable();

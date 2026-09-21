@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Fomvasss\NotifyTemplates\Listeners;
 
+use Fomvasss\NotifyTemplates\Contracts\ContentResolverInterface;
 use Fomvasss\NotifyTemplates\Contracts\ExternalIdResolverInterface;
 use Fomvasss\NotifyTemplates\Models\NotifyLog;
 use Fomvasss\NotifyTemplates\Notifications\BaseNotify;
@@ -83,6 +84,7 @@ class NotifyLogSubscriber
             'status' => NotifyLog::STATUS_SENT,
             'external_id' => $this->externalId($event->channel, $event->response),
             'status_updated_at' => now(),
+            ...$this->content($event->channel, $event->response, $event->notification),
         ]);
     }
 
@@ -154,6 +156,33 @@ class NotifyLogSubscriber
         $resolver = app($class);
 
         return $resolver->resolve($response);
+    }
+
+    /**
+     * Subject is stored whenever the channel has one; body unless disabled globally
+     * (log.store_body) or for this type (typeDefinition()['log_body'] = false — OTP codes,
+     * passwords and the like must not end up readable in the log).
+     */
+    private function content(string $channel, mixed $response, BaseNotify $notification): array
+    {
+        $class = config('notify-templates.log.content_resolvers', [])[$channel] ?? null;
+
+        if (!$class) {
+            return [];
+        }
+
+        /** @var ContentResolverInterface $resolver */
+        $resolver = app($class);
+        $content = $resolver->resolve($response);
+
+        $subject = $content['subject'] ?? null;
+        $storeBody = config('notify-templates.log.store_body', true)
+            && ($notification::typeDefinition()['log_body'] ?? true);
+
+        return [
+            'subject' => $subject === null ? null : mb_substr($subject, 0, 255),
+            'body' => $storeBody ? ($content['body'] ?? null) : null,
+        ];
     }
 
     /** @return class-string<NotifyLog> */

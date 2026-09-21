@@ -1,0 +1,23 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Fomvasss\NotifyTemplates\Tests\Fixtures;
+
+use Fomvasss\NotifyTemplates\Notifications\BaseNotify;
+
+final class SecretNotify extends BaseNotify
+{
+    public function __construct(protected string $roleKey) {}
+
+    public static function typeDefinition(): array
+    {
+        return [
+            'key' => 'Secret',
+            'name' => 'Secret code',
+            'group' => 'test',
+            'log_body' => false,
+            'defaults' => ['mail' => ['subject' => 'Your code', 'body' => 'Code: 1234']],
+        ];
+    }
+}

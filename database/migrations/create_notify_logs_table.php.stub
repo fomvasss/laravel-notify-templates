@@ -22,6 +22,9 @@ return new class extends Migration
             $table->string('notifiable_id')->nullable();
             // Address the channel delivered to: email, chat id, phone
             $table->string('route')->nullable();
+            // What was actually sent, taken from the channel's response — see log.content_resolvers
+            $table->string('subject')->nullable();
+            $table->longText('body')->nullable();
             // pending → sent → delivered → read; failed
             $table->string('status', 20);
             // Provider's message id — the key delivery reports are matched by

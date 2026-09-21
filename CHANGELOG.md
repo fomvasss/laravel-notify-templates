@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-09-21
+
+### Added
+- `notify_logs.subject` / `notify_logs.body` — what was actually sent, tokens substituted, taken from the channel's response. Existing 0.8.x installs: `php artisan vendor:publish --tag=notify-templates-migrations` publishes `add_content_to_notify_logs_table`
+- `ContentResolverInterface` + `log.content_resolvers` config; built-in `MailContentResolver` (subject + HTML) and `TelegramContentResolver` (message text, chunked parts joined)
+- `TelegramMessageIdResolver` — Bot API `message_id` as `external_id`, bound for `telegram` by default
+- `log.store_body` (default `true`) and `typeDefinition()['log_body'] = false` to keep the body out of the log (OTP codes, passwords); the subject is still stored
+
+### Changed
+- A published config must carry the new `log.content_resolvers` / `log.store_body` keys — `mergeConfigFrom()` does not merge nested arrays
+
 ## [0.8.1] - 2026-09-21
 
 ### Fixed
