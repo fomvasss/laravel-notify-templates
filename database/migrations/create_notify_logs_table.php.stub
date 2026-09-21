@@ -1,0 +1,47 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('notify_logs', function (Blueprint $table) {
+            $table->id();
+            // Laravel's per-notifiable notification id — same across channels and queue retries
+            $table->string('notification_id', 36);
+            $table->string('notify_key', 100);
+            // Channel as returned by via(): 'mail', 'telegram' or a channel class-string
+            $table->string('channel');
+            $table->string('role_key', 100)->nullable();
+            $table->string('tenant_id', 100)->nullable();
+            // null for on-demand (AnonymousNotifiable) recipients — see `route`
+            $table->string('notifiable_type')->nullable();
+            $table->string('notifiable_id')->nullable();
+            // Address the channel delivered to: email, chat id, phone
+            $table->string('route')->nullable();
+            // pending → sent → delivered → read; failed
+            $table->string('status', 20);
+            // Provider's message id — the key delivery reports are matched by
+            $table->string('external_id')->nullable();
+            $table->text('error')->nullable();
+            // Last raw delivery report / failure data from the provider
+            $table->json('payload')->nullable();
+            $table->unsignedSmallInteger('attempts')->default(1);
+            $table->timestamp('status_updated_at')->nullable();
+            $table->timestamps();
+
+            $table->index('notification_id');
+            $table->index(['channel', 'external_id']);
+            $table->index(['notifiable_type', 'notifiable_id']);
+            $table->index('created_at');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('notify_logs');
+    }
+};

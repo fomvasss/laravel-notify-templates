@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-09-21
+
+### Added
+- Delivery log (opt-in, `log.enabled`): table `notify_logs`, one row per notification × channel × recipient, written from `NotificationSending`/`Sent`/`Failed` for `BaseNotify` subclasses. Existing installs: `php artisan vendor:publish --tag=notify-templates-migrations` publishes only the new `create_notify_logs_table` migration
+- Delivery statuses `pending`/`sent`/`delivered`/`read`/`failed` and `NotifyTemplates::updateDelivery($channel, $externalId, $status, $payload)` for provider delivery reports. The status only moves forward, so out-of-order reports are ignored
+- `ExternalIdResolverInterface` + `log.external_id_resolvers` config: extracts the provider message id from a channel's send() response. `MailMessageIdResolver` is bound for `mail` by default
+- `NotifyLog` is `MassPrunable`: rows older than `log.retention_days` (default 90) are removed by `model:prune`
+- `BaseNotify::getRoleKey()`, `BaseNotify::getTenantId()`
+- New config keys: `tables.notify_logs`, `models.notify_log`, `log.*`
+
+### Changed
+- `NotifyTemplatesManager::resolveTenantId()` is now public (was protected). Subclasses that override it must widen the visibility too
+
 ## [0.7.0] - 2026-08-16
 
 ### Added

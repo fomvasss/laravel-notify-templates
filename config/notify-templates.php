@@ -11,6 +11,7 @@ return [
         'notify_templates' => 'notify_templates',
         'notify_role_subscriptions' => 'notify_role_subscriptions',
         'notify_user_settings' => 'notify_user_settings',
+        'notify_logs' => 'notify_logs',
     ],
 
     /*
@@ -77,6 +78,28 @@ return [
         'notify_template' => \Fomvasss\NotifyTemplates\Models\NotifyTemplate::class,
         'notify_role_subscription' => \Fomvasss\NotifyTemplates\Models\NotifyRoleSubscription::class,
         'notify_user_setting' => \Fomvasss\NotifyTemplates\Models\NotifyUserSetting::class,
+        'notify_log' => \Fomvasss\NotifyTemplates\Models\NotifyLog::class,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Delivery log (notify_logs).
+    | One row per notification × channel × recipient, BaseNotify subclasses only.
+    |--------------------------------------------------------------------------
+    |   enabled — opt-in; needs the notify_logs migration
+    |   retention_days — rows older than this are removed by `model:prune`
+    |     (schedule it in the host app)
+    |   external_id_resolvers — channel (as returned by via()) => class
+    |     implementing ExternalIdResolverInterface: extracts the provider
+    |     message id that NotifyTemplates::updateDelivery() matches by
+    |--------------------------------------------------------------------------
+    */
+    'log' => [
+        'enabled' => false,
+        'retention_days' => 90,
+        'external_id_resolvers' => [
+            'mail' => \Fomvasss\NotifyTemplates\Resolvers\MailMessageIdResolver::class,
+        ],
     ],
 
 ];

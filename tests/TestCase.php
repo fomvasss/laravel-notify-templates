@@ -67,5 +67,24 @@ abstract class TestCase extends OrchestraTestCase
             $table->json('channels')->nullable();
             $table->timestamps();
         });
+
+        Schema::create('notify_logs', function ($table) {
+            $table->id();
+            $table->string('notification_id', 36);
+            $table->string('notify_key', 100);
+            $table->string('channel');
+            $table->string('role_key', 100)->nullable();
+            $table->string('tenant_id', 100)->nullable();
+            $table->string('notifiable_type')->nullable();
+            $table->string('notifiable_id')->nullable();
+            $table->string('route')->nullable();
+            $table->string('status', 20);
+            $table->string('external_id')->nullable();
+            $table->text('error')->nullable();
+            $table->json('payload')->nullable();
+            $table->unsignedSmallInteger('attempts')->default(1);
+            $table->timestamp('status_updated_at')->nullable();
+            $table->timestamps();
+        });
     }
 }

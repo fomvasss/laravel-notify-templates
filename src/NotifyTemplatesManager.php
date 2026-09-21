@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Fomvasss\NotifyTemplates;
 
+use Fomvasss\NotifyTemplates\Models\NotifyLog;
 use Fomvasss\NotifyTemplates\Models\NotifyRoleSubscription;
 use Fomvasss\NotifyTemplates\Models\NotifyTemplate as NotifyTemplateModel;
 use Fomvasss\NotifyTemplates\Models\NotifyUserSetting;
@@ -119,7 +120,7 @@ class NotifyTemplatesManager
      * Falls back to config('notify-templates.tenant_id') when no explicit tenantId is passed.
      * The config value can be a plain string or a callable returning one.
      */
-    protected function resolveTenantId(?string $tenantId): ?string
+    public function resolveTenantId(?string $tenantId): ?string
     {
         if ($tenantId !== null) {
             return $tenantId;
@@ -237,5 +238,42 @@ class NotifyTemplatesManager
         $class = config('notify-templates.models.notify_user_setting', NotifyUserSetting::class);
 
         return $class::channelsFor($notifiable, $notifyKey);
+    }
+
+    // -------------------------------------------------------------------------
+    // Delivery log
+    // -------------------------------------------------------------------------
+
+    /**
+     * Apply a provider delivery report (webhook or status poll) to the logged message.
+     * The status only ever moves forward — a stale or out-of-order report is ignored.
+     * Returns false when no log row matches or the report was ignored.
+     *
+     * @param string $status  One of NotifyLog::statuses() except 'pending'
+     */
+    public function updateDelivery(string $channel, string $externalId, string $status, array $payload = []): bool
+    {
+        if ($status === NotifyLog::STATUS_PENDING || !in_array($status, NotifyLog::statuses(), true)) {
+            throw new \InvalidArgumentException("Invalid delivery status \"{$status}\".");
+        }
+
+        /** @var class-string<NotifyLog> $class */
+        $class = config('notify-templates.models.notify_log', NotifyLog::class);
+
+        $log = $class::query()
+            ->where('channel', $channel)
+            ->where('external_id', $externalId)
+            ->latest('id')
+            ->first();
+
+        if (!$log || !$log->canMoveTo($status)) {
+            return false;
+        }
+
+        return $log->update([
+            'status' => $status,
+            'payload' => $payload ?: null,
+            'status_updated_at' => now(),
+        ]);
     }
 }

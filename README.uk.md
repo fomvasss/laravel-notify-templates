@@ -499,6 +499,8 @@ NotifyTemplates::getTypeChannels(string $notifyKey): array
 NotifyTemplates::resolveTemplate(string $notifyKey, string $channel, ?string $roleKey, ?string $tenantId): ?NotifyTemplate
 NotifyTemplates::resolveChannels(string $notifyKey, string $roleKey, ?string $tenantId, array $userChannels = []): array
 NotifyTemplates::resolveDelay(string $notifyKey, string $roleKey, ?string $tenantId): int
+
+NotifyTemplates::updateDelivery(string $channel, string $externalId, string $status, array $payload = []): bool
 ```
 
 ---
@@ -553,6 +555,67 @@ NotifyTemplates::resolveDelay(string $notifyKey, string $roleKey, ?string $tenan
 | `->only(['telegram'])` на місці виклику | тільки `telegram`, незалежно від підписки |
 
 `config('notify-templates.channels')` і `typeDefinition()['channels']` (через `getTypeChannels()`) — це лише **список для UI**: визначають чекбокси на формі редагування в адмінці. Жоден з них напряму не впливає на ланцюг вище.
+
+---
+
+## Журнал відправок
+
+Журнал усіх надісланих сповіщень, вмикається в конфігу: один рядок `notify_logs` на кожну пару «сповіщення × канал» і кожного отримувача. Пише тільки нащадків `BaseNotify`.
+
+```php
+// config/notify-templates.php
+'log' => [
+    'enabled' => true,
+    'retention_days' => 90,
+    'external_id_resolvers' => [
+        'mail' => \Fomvasss\NotifyTemplates\Resolvers\MailMessageIdResolver::class,
+    ],
+],
+```
+
+Для наявних інсталяцій `php artisan vendor:publish --tag=notify-templates-migrations` опублікує тільки відсутню міграцію `create_notify_logs_table`.
+
+Що пишеться:
+
+- `NotificationSending` створює рядок зі статусом `pending`. Якщо відправка обірвалась без жодної наступної події (вбили воркер, таймаут), рядок так і лишиться `pending`, тож слід відправки буде.
+- `NotificationSent` ставить `sent` і `external_id` (id повідомлення в провайдера), який дістає резолвер каналу.
+- `NotificationFailed` ставить `failed` і текст помилки. Якщо канал сам ловить свій виняток (шле `NotificationFailed` і нормально повертається), то `NotificationSent`, який Laravel кидає одразу після, помилку не перезапише.
+- Повтор тієї ж нотифікації з черги використовує той самий рядок і збільшує `attempts`.
+- У `route` — фактична адреса: email, chat id, телефон. `notifiable_type/id` дорівнюють `null` для on-demand отримувачів (`Notification::route()`).
+
+### Статус доставки
+
+`pending → sent → delivered → read`, а також `failed`. `sent` означає, що провайдер прийняв повідомлення. `delivered`/`read` бувають лише там, де провайдер їх повідомляє: WhatsApp, Viber, SMS-шлюзи з DLR, вебхуки поштових сервісів. Для пошти через звичайний SMTP і для Telegram-ботів `sent` фінальний.
+
+Звіти провайдера (з вебхука чи опитування API) передавати сюди:
+
+```php
+NotifyTemplates::updateDelivery($channel, $externalId, 'delivered', $rawPayload);
+```
+
+Статус змінюється тільки вперед: звіти приходять не по порядку (наприклад, `delivered` після `read`), і спізнілий звіт ігнорується. `failed` приймається поверх `sent`, але не поверх `delivered`/`read`. Метод повертає `false`, якщо нічого не знайдено або звіт проігноровано.
+
+`$channel` — назва каналу в тому вигляді, в якому її повернув `via()` (`'mail'`, `'telegram'` або class-string каналу). Для кожного каналу, звіти якого обробляєте, прив'яжіть резолвер id:
+
+```php
+use Fomvasss\NotifyTemplates\Contracts\ExternalIdResolverInterface;
+
+class TurboSmsIdResolver implements ExternalIdResolverInterface
+{
+    public function resolve(mixed $response): ?string
+    {
+        return $response['response_result'][0]['message_id'] ?? null;
+    }
+}
+```
+
+### Очищення
+
+`NotifyLog` реалізує `MassPrunable`. Рядки, старші за `retention_days`, видаляє `model:prune`, і його треба додати в розклад:
+
+```php
+Schedule::command('model:prune', ['--model' => [\Fomvasss\NotifyTemplates\Models\NotifyLog::class]])->daily();
+```
 
 ---
 

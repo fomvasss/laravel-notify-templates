@@ -46,6 +46,16 @@ abstract class BaseNotify extends Notification
         return static::notifyKey();
     }
 
+    public function getRoleKey(): ?string
+    {
+        return $this->roleKey ?? null;
+    }
+
+    public function getTenantId(): ?string
+    {
+        return $this->tenantId;
+    }
+
     public static function typeDefinition(): array
     {
         return [];

@@ -615,6 +615,9 @@ NotifyTemplates::resolveChannels(string $notifyKey, string $roleKey, ?string $te
 
 // Delay in seconds (options.delay in DB is stored in minutes)
 NotifyTemplates::resolveDelay(string $notifyKey, string $roleKey, ?string $tenantId): int
+
+// Delivery report from a provider; status only moves forward
+NotifyTemplates::updateDelivery(string $channel, string $externalId, string $status, array $payload = []): bool
 ```
 
 ---
@@ -686,6 +689,67 @@ Every notification goes through a fixed resolution chain inside `via()`. Each st
 8. `notify_key=OrderOrdered, channel=null, role=null,   tenant=null` ← global fallback
 
 Returns the first match, or `null` — `BaseNotify` then falls back to `getBodyDefault()` / `getSubjectDefault()`.
+
+---
+
+## Delivery log
+
+Opt-in journal of every sent notification: one `notify_logs` row per notification × channel × recipient. Covers `BaseNotify` subclasses only.
+
+```php
+// config/notify-templates.php
+'log' => [
+    'enabled' => true,
+    'retention_days' => 90,
+    'external_id_resolvers' => [
+        'mail' => \Fomvasss\NotifyTemplates\Resolvers\MailMessageIdResolver::class,
+    ],
+],
+```
+
+Existing installs: `php artisan vendor:publish --tag=notify-templates-migrations` publishes only the missing `create_notify_logs_table` migration.
+
+What gets written:
+
+- `NotificationSending` creates the row as `pending`. A send that dies without any further event (worker killed, timeout) stays `pending`, so the row is still a trace.
+- `NotificationSent` → `sent`, plus `external_id` (the provider's message id) from the channel's resolver.
+- `NotificationFailed` → `failed` with the error. When a channel swallows its own exception (dispatches `NotificationFailed` and returns), the `NotificationSent` that Laravel fires right after does not overwrite the failure.
+- A queue retry of the same notification reuses the row and increments `attempts`.
+- `route` holds the actual address: email, chat id, phone. `notifiable_type/id` are `null` for on-demand (`Notification::route()`) recipients.
+
+### Delivery status
+
+`pending → sent → delivered → read`, plus `failed`. `sent` means the provider accepted the message. `delivered`/`read` exist only where the provider reports them: WhatsApp, Viber, SMS gateways with DLR, ESP webhooks. For mail over plain SMTP or Telegram bots, `sent` is final.
+
+Feed provider reports (webhook or status poll) into:
+
+```php
+NotifyTemplates::updateDelivery($channel, $externalId, 'delivered', $rawPayload);
+```
+
+The status only moves forward: reports arrive out of order (e.g. `delivered` after `read`), and a stale one is ignored. `failed` is accepted over `sent` but not over `delivered`/`read`. The method returns `false` when nothing matched or the report was ignored.
+
+`$channel` is the channel name as `via()` returned it (`'mail'`, `'telegram'` or a channel class-string). Bind an id resolver for each channel whose reports you process:
+
+```php
+use Fomvasss\NotifyTemplates\Contracts\ExternalIdResolverInterface;
+
+class TurboSmsIdResolver implements ExternalIdResolverInterface
+{
+    public function resolve(mixed $response): ?string
+    {
+        return $response['response_result'][0]['message_id'] ?? null;
+    }
+}
+```
+
+### Pruning
+
+`NotifyLog` is `MassPrunable`. Rows older than `retention_days` are removed by `model:prune`, which you need to schedule:
+
+```php
+Schedule::command('model:prune', ['--model' => [\Fomvasss\NotifyTemplates\Models\NotifyLog::class]])->daily();
+```
 
 ---
 

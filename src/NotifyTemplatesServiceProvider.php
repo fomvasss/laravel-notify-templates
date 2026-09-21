@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Fomvasss\NotifyTemplates;
 
 use Fomvasss\NotifyTemplates\Console\MakeNotifyCommand;
+use Fomvasss\NotifyTemplates\Listeners\NotifyLogSubscriber;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 
 class NotifyTemplatesServiceProvider extends ServiceProvider
@@ -26,6 +28,10 @@ class NotifyTemplatesServiceProvider extends ServiceProvider
 
         $this->publishMigrations();
 
+        if (config('notify-templates.log.enabled')) {
+            Event::subscribe(NotifyLogSubscriber::class);
+        }
+
         $manager = $this->app->make(NotifyTemplatesManager::class);
 
         foreach (config('notify-templates.discover', []) as $path) {
@@ -40,14 +46,15 @@ class NotifyTemplatesServiceProvider extends ServiceProvider
 
     private function publishMigrations(): void
     {
-        $migration = 'create_notifytemplates_tables';
-
-        if (!glob(database_path("migrations/*_{$migration}.php"))) {
-            $this->publishes([
-                __DIR__."/../database/migrations/{$migration}.php.stub" => database_path(
-                    'migrations/'.date('Y_m_d_His')."_{$migration}.php"
-                ),
-            ], 'notify-templates-migrations');
+        // notify_logs ships as its own migration so existing installs can publish just it
+        foreach (['create_notifytemplates_tables', 'create_notify_logs_table'] as $migration) {
+            if (!glob(database_path("migrations/*_{$migration}.php"))) {
+                $this->publishes([
+                    __DIR__."/../database/migrations/{$migration}.php.stub" => database_path(
+                        'migrations/'.date('Y_m_d_His')."_{$migration}.php"
+                    ),
+                ], 'notify-templates-migrations');
+            }
         }
     }
 }

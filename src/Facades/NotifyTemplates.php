@@ -19,6 +19,8 @@ use Illuminate\Support\Facades\Facade;
  * @method static bool isNotifyEnabled(string $notifyKey, mixed $notifiable)
  * @method static bool isUserConfigurable(string $notifyKey)
  * @method static array|null resolveNotifyUserChannels(string $notifyKey, mixed $notifiable)
+ * @method static string|null resolveTenantId(?string $tenantId)
+ * @method static bool updateDelivery(string $channel, string $externalId, string $status, array $payload = [])
  *
  * @see NotifyTemplatesManager
  */
