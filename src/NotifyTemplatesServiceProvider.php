@@ -24,6 +24,12 @@ class NotifyTemplatesServiceProvider extends ServiceProvider
             __DIR__.'/../config/notify-templates.php' => config_path('notify-templates.php'),
         ], 'notify-templates-config');
 
+        $this->loadTranslationsFrom(__DIR__.'/../lang', 'notify-templates');
+
+        $this->publishes([
+            __DIR__.'/../lang' => $this->app->langPath('vendor/notify-templates'),
+        ], 'notify-templates-lang');
+
         $this->commands([MakeNotifyCommand::class]);
 
         $this->publishMigrations();

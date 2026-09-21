@@ -618,6 +618,14 @@ class TurboSmsIdResolver implements ExternalIdResolverInterface
 }
 ```
 
+### Назви статусів
+
+`NotifyLog::statusLabels()` повертає перекладені назви з ключами-статусами, `$log->getStatusLabel()` — назву для конкретного рядка. У пакеті є `en` і `uk`. Щоб змінити формулювання чи додати мову, опублікуйте переклади й правте `lang/vendor/notify-templates/{locale}/log.php`:
+
+```bash
+php artisan vendor:publish --tag=notify-templates-lang
+```
+
 ### Очищення
 
 `NotifyLog` реалізує `MassPrunable`. Рядки, старші за `retention_days`, видаляє `model:prune`, і його треба додати в розклад:

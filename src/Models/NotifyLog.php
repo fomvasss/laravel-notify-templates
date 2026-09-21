@@ -53,6 +53,25 @@ class NotifyLog extends Model
         return array_keys(self::RANKS);
     }
 
+    /**
+     * Translated labels keyed by status. Override the wording or add a locale by publishing
+     * the translations: `php artisan vendor:publish --tag=notify-templates-lang`.
+     *
+     * @return array<string, string>
+     */
+    public static function statusLabels(): array
+    {
+        return array_combine(
+            self::statuses(),
+            array_map(fn($status) => trans("notify-templates::log.statuses.{$status}"), self::statuses()),
+        );
+    }
+
+    public function getStatusLabel(): string
+    {
+        return static::statusLabels()[$this->status] ?? $this->status;
+    }
+
     public function canMoveTo(string $status): bool
     {
         return self::RANKS[$status] > (self::RANKS[$this->status] ?? -1);

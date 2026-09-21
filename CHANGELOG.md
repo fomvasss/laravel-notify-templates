@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-09-21
+
+### Added
+- Translatable delivery status labels: `NotifyLog::statusLabels()` and `$log->getStatusLabel()`, `en` and `uk` included. Publish with `php artisan vendor:publish --tag=notify-templates-lang` to change the wording or add a locale
+
 ## [0.9.0] - 2026-09-21
 
 ### Added

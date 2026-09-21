@@ -208,4 +208,13 @@ class NotifyLogTest extends TestCase
         $this->assertSame(['body' => "Part 1\nPart 2"], (new TelegramContentResolver())->resolve($chunked));
         $this->assertSame([], (new TelegramContentResolver())->resolve(null));
     }
+
+    public function test_status_labels_are_translated(): void
+    {
+        app()->setLocale('en');
+        $this->assertSame('Delivered', NotifyLog::statusLabels()[NotifyLog::STATUS_DELIVERED]);
+
+        app()->setLocale('uk');
+        $this->assertSame('Доставлено', (new NotifyLog(['status' => NotifyLog::STATUS_DELIVERED]))->getStatusLabel());
+    }
 }

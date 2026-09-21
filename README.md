@@ -752,6 +752,14 @@ class TurboSmsIdResolver implements ExternalIdResolverInterface
 }
 ```
 
+### Status labels
+
+`NotifyLog::statusLabels()` returns translated labels keyed by status, and `$log->getStatusLabel()` returns the label for one row. The package ships `en` and `uk`. To change the wording or add a locale, publish the translations and edit `lang/vendor/notify-templates/{locale}/log.php`:
+
+```bash
+php artisan vendor:publish --tag=notify-templates-lang
+```
+
 ### Pruning
 
 `NotifyLog` is `MassPrunable`. Rows older than `retention_days` are removed by `model:prune`, which you need to schedule:
