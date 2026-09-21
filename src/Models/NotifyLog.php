@@ -26,8 +26,9 @@ class NotifyLog extends Model
         self::STATUS_PENDING => 0,
         self::STATUS_SENT => 1,
         self::STATUS_DELIVERED => 2,
-        self::STATUS_FAILED => 2,
         self::STATUS_READ => 3,
+        // Listed last so statuses()/statusLabels() follow the lifecycle; the rank is what matters
+        self::STATUS_FAILED => 2,
     ];
 
     protected $guarded = ['id'];

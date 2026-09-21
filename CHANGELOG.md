@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-09-21
+
+### Fixed
+- `NotifyLog::statuses()` / `statusLabels()` list statuses in lifecycle order (`pending`, `sent`, `delivered`, `read`, `failed`); `failed` used to come before `read`
+
 ## [0.10.0] - 2026-09-21
 
 ### Added
