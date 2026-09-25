@@ -222,6 +222,48 @@ abstract class BaseNotify extends Notification
         return $this->prepareText($body, $notifiable);
     }
 
+    /**
+     * Link buttons for a messenger message with prepareText() applied to text and url.
+     * Buttons whose url is not sendable after substitution are dropped — a single bad url
+     * (unresolved token, local host) makes Telegram reject the whole message.
+     * Render them in the toTelegram() etc. that the host app adds.
+     *
+     * @return list<array{text: string, url: string}>
+     */
+    protected function getMessengerButtons(mixed $notifiable): array
+    {
+        $buttons = [];
+
+        foreach ($this->manager()->resolveButtons($this->getNotifyKey(), $this->getRoleKey(), $this->tenantId, 'messenger', static::typeDefinition()) as $button) {
+            $url = trim($this->prepareText((string) $button['url'], $notifiable));
+
+            if ($this->isSendableButtonUrl($url)) {
+                $buttons[] = ['text' => $this->prepareText((string) $button['text'], $notifiable), 'url' => $url];
+            }
+        }
+
+        return $buttons;
+    }
+
+    protected function getMessengerButtonsColumns(): int
+    {
+        return $this->manager()->resolveButtonsColumns($this->getNotifyKey(), $this->getRoleKey(), $this->tenantId, 'messenger', static::typeDefinition());
+    }
+
+    /**
+     * Absolute http(s) url on a public-looking host. Override to allow e.g. a local tunnel.
+     */
+    protected function isSendableButtonUrl(string $url): bool
+    {
+        if (!filter_var($url, FILTER_VALIDATE_URL) || !in_array(parse_url($url, PHP_URL_SCHEME), ['http', 'https'], true)) {
+            return false;
+        }
+
+        $host = (string) parse_url($url, PHP_URL_HOST);
+
+        return str_contains($host, '.') && !preg_match('/\.(test|local|localhost)$/i', $host);
+    }
+
     protected function resolveTemplate(string $channel): ?NotifyTemplate
     {
         return $this->manager()->resolveTemplate(

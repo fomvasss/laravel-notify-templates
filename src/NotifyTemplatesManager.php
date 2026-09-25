@@ -151,6 +151,54 @@ class NotifyTemplatesManager
     }
 
     // -------------------------------------------------------------------------
+    // Messenger buttons
+    // -------------------------------------------------------------------------
+
+    /**
+     * Link buttons shown under a messenger message, raw (tokens not substituted):
+     * template options.buttons → typeDefinition buttons_by_role[role] → typeDefinition buttons.
+     * A template or role entry that is an array wins even when empty — [] means "no buttons".
+     *
+     * @param array|null $type  typeDefinition() of the notify; defaults to the registered type
+     * @return list<array{text: string, url: string}>
+     */
+    public function resolveButtons(
+        string $notifyKey,
+        ?string $roleKey = null,
+        ?string $tenantId = null,
+        string $channel = 'messenger',
+        ?array $type = null,
+    ): array {
+        $buttons = $this->resolveTemplate($notifyKey, $channel, $roleKey, $tenantId)?->getOption('buttons');
+
+        if (!is_array($buttons)) {
+            $type ??= $this->getType($notifyKey) ?? [];
+            $buttons = $type['buttons_by_role'][$roleKey ?? ''] ?? $type['buttons'] ?? [];
+        }
+
+        return array_values(array_filter(
+            $buttons,
+            fn($button) => is_array($button) && trim((string) ($button['text'] ?? '')) !== '' && trim((string) ($button['url'] ?? '')) !== '',
+        ));
+    }
+
+    /**
+     * Buttons per row: template options.buttons_columns → typeDefinition buttons_columns → 1.
+     */
+    public function resolveButtonsColumns(
+        string $notifyKey,
+        ?string $roleKey = null,
+        ?string $tenantId = null,
+        string $channel = 'messenger',
+        ?array $type = null,
+    ): int {
+        $columns = $this->resolveTemplate($notifyKey, $channel, $roleKey, $tenantId)?->getOption('buttons_columns');
+        $columns ??= ($type ?? $this->getType($notifyKey) ?? [])['buttons_columns'] ?? 1;
+
+        return max(1, (int) $columns);
+    }
+
+    // -------------------------------------------------------------------------
     // Channel & delay resolution
     // -------------------------------------------------------------------------
 

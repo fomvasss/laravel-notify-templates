@@ -159,6 +159,9 @@ Or statically via config:
 | `defaults` | array | Default subject/body per channel slot, used as placeholder in the editor when no DB template exists |
 | `user_configurable` | bool | `false` — the notifiable can't opt out of the type or restrict its channels, and an empty channel resolution falls back to `default_channels`. Default `true`. See [Non-configurable types](#non-configurable-types-otp-security-codes) |
 | `log_body` | bool | `false` — the delivery log stores the subject only, never the body (OTP codes, passwords). Default `true`. See [Delivery log](#delivery-log) |
+| `buttons` | array | Link buttons under a messenger message: `[['text' => 'Pay', 'url' => '[order:payUrl]']]`, tokens allowed in both. See [Messenger buttons](#messenger-buttons) |
+| `buttons_by_role` | array | Buttons for a specific role, replacing `buttons`: `['admin' => [...]]`; `[]` — no buttons for that role |
+| `buttons_columns` | int | Buttons per row. Default `1` |
 
 `tokens` and `defaults` are UI metadata — the package does not use them for sending. `getBodyDefault()` / `getSubjectDefault()` on `BaseNotify` read from `defaults.mail` automatically. Keep them in sync.
 
@@ -544,6 +547,59 @@ abstract class BaseNotification extends BaseNotify
 
 > **Do not copy `via()` into the host app.** Override `mapChannel()` instead. A copied `via()` freezes the resolution chain at the moment of copying — every package fix to it (opt-out handling, fallback semantics, …) then silently doesn't apply until you manually sync the copy.
 
+### Messenger buttons
+
+A long link in a messenger text reads badly; put it on a button under the message instead. Defaults live in
+`typeDefinition()`, and a `messenger` template row can override them from your admin UI via `options`:
+
+```php
+'buttons' => [
+    ['text' => 'Pay', 'url' => '[order:payUrl]'],
+],
+'buttons_by_role' => [
+    'admin' => [['text' => 'Order in admin', 'url' => '[order:adminUrl]']],
+],
+'buttons_columns' => 1,
+```
+
+```json
+// notify_templates.options of a messenger template — wins over typeDefinition()
+{"buttons": [{"text": "Pay now", "url": "[order:payUrl]"}], "buttons_columns": 2}
+```
+
+Resolution: template `options.buttons` → `buttons_by_role[role]` → `buttons`. An array wins even when empty, so
+`"buttons": []` in a template removes the type's default buttons. Leave the key out to keep the defaults.
+Entries with an empty `text` or `url` are skipped.
+
+The package doesn't render messages for host channels, so the buttons go into your `toTelegram()`:
+
+```php
+public function toTelegram(mixed $notifiable): TelegramMessage
+{
+    $message = TelegramMessage::create()
+        ->options(['parse_mode' => 'HTML'])
+        ->line($this->getMessengerBody($notifiable));
+
+    $columns = $this->getMessengerButtonsColumns();
+
+    foreach ($this->getMessengerButtons($notifiable) as $button) {
+        $message->button($button['text'], $button['url'], $columns);
+    }
+
+    return $message;
+}
+```
+
+`getMessengerButtons()` runs `prepareText()` on text and url, then drops buttons whose url isn't an absolute
+http(s) link on a public host: an unresolved token or a `*.test` / `localhost` url makes Telegram reject the
+whole message, not just the button. Override `isSendableButtonUrl()` to allow e.g. a tunnel. Channels without
+buttons (SMS, WhatsApp text) can append the links to the text instead.
+
+With the delivery log on, `TelegramContentResolver` appends url buttons to the logged body as `[text] url`.
+
+`options` lives on `notify_templates` itself, so with astrotomic/laravel-translatable the button text is the
+same for every locale. Use a token in `text` if it has to be translated.
+
 ---
 
 ## Listeners
@@ -643,6 +699,10 @@ NotifyTemplates::resolveTemplate(string $notifyKey, string $channel, ?string $ro
 
 // Delivery channels: subscription channels intersected with user preferences (user can opt out, not add)
 NotifyTemplates::resolveChannels(string $notifyKey, string $roleKey, ?string $tenantId, array $userChannels = []): array
+
+// Messenger buttons, raw: template options.buttons → buttons_by_role[role] → buttons
+NotifyTemplates::resolveButtons(string $notifyKey, ?string $roleKey, ?string $tenantId, string $channel = 'messenger', ?array $type = null): array
+NotifyTemplates::resolveButtonsColumns(string $notifyKey, ?string $roleKey, ?string $tenantId, string $channel = 'messenger', ?array $type = null): int
 
 // Delay in seconds (options.delay in DB is stored in minutes)
 NotifyTemplates::resolveDelay(string $notifyKey, string $roleKey, ?string $tenantId): int

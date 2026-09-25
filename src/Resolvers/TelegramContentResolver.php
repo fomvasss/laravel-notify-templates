@@ -13,11 +13,29 @@ class TelegramContentResolver implements ContentResolverInterface
 
     public function resolve(mixed $response): array
     {
+        $results = $this->results($response);
+
         $texts = array_filter(array_map(
             fn($result) => $result['text'] ?? $result['caption'] ?? null,
-            $this->results($response),
+            $results,
         ));
 
-        return $texts ? ['body' => implode("\n", $texts)] : [];
+        if (!$texts) {
+            return [];
+        }
+
+        // Inline url buttons are not part of the text — append them so the log shows where they led
+        $buttons = [];
+        foreach ($results as $result) {
+            foreach ($result['reply_markup']['inline_keyboard'] ?? [] as $row) {
+                foreach ($row as $button) {
+                    if (isset($button['text'], $button['url'])) {
+                        $buttons[] = "[{$button['text']}] {$button['url']}";
+                    }
+                }
+            }
+        }
+
+        return ['body' => implode("\n", $texts).($buttons ? "\n\n".implode("\n", $buttons) : '')];
     }
 }

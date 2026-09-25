@@ -137,6 +137,9 @@ NotifyTemplates::registerTypes([
 | `defaults` | array | Дефолтні subject/body по слоту каналу |
 | `user_configurable` | bool | `false` — notifiable не може вимкнути тип чи обмежити його канали, а порожній резолв каналів падає на `default_channels`. Дефолт `true`. Див. «Типи, які не можна кастомізувати» |
 | `log_body` | bool | `false` — у журнал відправок пишеться лише тема, без тіла (OTP-коди, паролі). Дефолт `true`. Див. «Журнал відправок» |
+| `buttons` | array | Кнопки-посилання під повідомленням месенджера: `[['text' => 'Оплатити', 'url' => '[order:payUrl]']]`, токени в обох полях. Див. «Кнопки в месенджерах» |
+| `buttons_by_role` | array | Кнопки для конкретної ролі замість `buttons`: `['admin' => [...]]`; `[]` — без кнопок для ролі |
+| `buttons_columns` | int | Скільки кнопок у ряд. Дефолт `1` |
 
 Єдиний ключ що пакет читає нативно в `settings` — `delay` (затримка в хвилинах):
 
@@ -305,6 +308,59 @@ abstract class BaseNotification extends BaseNotify
 ```
 
 > **Не копіюйте `via()` у хост-проект.** Перевизначайте `mapChannel()`. Скопійований `via()` заморожує ланцюг резолву на момент копіювання — кожен наступний фікс пакету (обробка opt-out, семантика фолбеку, …) мовчки не застосовується, поки не синхронізуєте копію вручну.
+
+### Кнопки в месенджерах
+
+Довге посилання в тексті месенджера читається погано — його краще винести на кнопку під повідомленням.
+Дефолти задаються в `typeDefinition()`, а `messenger`-шаблон може перевизначити їх з адмінки через `options`:
+
+```php
+'buttons' => [
+    ['text' => 'Оплатити', 'url' => '[order:payUrl]'],
+],
+'buttons_by_role' => [
+    'admin' => [['text' => 'Замовлення в адмінці', 'url' => '[order:adminUrl]']],
+],
+'buttons_columns' => 1,
+```
+
+```json
+// notify_templates.options messenger-шаблону — має пріоритет над typeDefinition()
+{"buttons": [{"text": "Оплатити зараз", "url": "[order:payUrl]"}], "buttons_columns": 2}
+```
+
+Порядок: `options.buttons` шаблону → `buttons_by_role[role]` → `buttons`. Масив перемагає навіть порожній, тож
+`"buttons": []` у шаблоні прибирає дефолтні кнопки типу; без ключа лишаються дефолти. Записи з порожнім `text`
+чи `url` пропускаються.
+
+Повідомлення для каналів хост-проекту пакет не рендерить, тож кнопки додаються у ваш `toTelegram()`:
+
+```php
+public function toTelegram(mixed $notifiable): TelegramMessage
+{
+    $message = TelegramMessage::create()
+        ->options(['parse_mode' => 'HTML'])
+        ->line($this->getMessengerBody($notifiable));
+
+    $columns = $this->getMessengerButtonsColumns();
+
+    foreach ($this->getMessengerButtons($notifiable) as $button) {
+        $message->button($button['text'], $button['url'], $columns);
+    }
+
+    return $message;
+}
+```
+
+`getMessengerButtons()` проганяє `prepareText()` по тексту й url і відкидає кнопки, чий url не є абсолютним
+http(s)-посиланням на публічний хост: непідставлений токен чи url на `*.test` / `localhost` змушує Telegram
+відхилити все повідомлення, а не лише кнопку. Щоб дозволити, напр., тунель, перевизначте `isSendableButtonUrl()`.
+Каналам без кнопок (SMS, текст WhatsApp) посилання можна дописати в кінець тексту.
+
+З увімкненим журналом `TelegramContentResolver` дописує url-кнопки в збережене тіло рядками `[текст] url`.
+
+`options` лежить у самій `notify_templates`, тож з astrotomic/laravel-translatable текст кнопки однаковий для
+всіх локалей. Якщо його треба перекладати — пишіть у `text` токен.
 
 ---
 
@@ -531,6 +587,8 @@ NotifyTemplates::getTypeChannels(string $notifyKey): array
 NotifyTemplates::resolveTemplate(string $notifyKey, string $channel, ?string $roleKey, ?string $tenantId): ?NotifyTemplate
 NotifyTemplates::resolveChannels(string $notifyKey, string $roleKey, ?string $tenantId, array $userChannels = []): array
 NotifyTemplates::resolveDelay(string $notifyKey, string $roleKey, ?string $tenantId): int
+NotifyTemplates::resolveButtons(string $notifyKey, ?string $roleKey, ?string $tenantId, string $channel = 'messenger', ?array $type = null): array
+NotifyTemplates::resolveButtonsColumns(string $notifyKey, ?string $roleKey, ?string $tenantId, string $channel = 'messenger', ?array $type = null): int
 
 NotifyTemplates::updateDelivery(string $channel, string $externalId, string $status, array $payload = []): bool
 ```
