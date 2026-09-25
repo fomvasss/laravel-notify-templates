@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-09-25
+
+### Added
+- Multilingual button text: `text` in `buttons` / `buttons_by_role` / template `options.buttons` may be a locale map (`['uk' => 'Оплатити', 'en' => 'Pay']`), resolved to the current locale, then `app.fallback_locale`, then the first non-empty entry. Plain strings work as before
+- `NotifyTemplates::localizeButtonText($text, $locale = null)`
+
 ## [0.11.0] - 2026-09-25
 
 ### Added

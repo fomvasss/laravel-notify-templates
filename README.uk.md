@@ -137,7 +137,7 @@ NotifyTemplates::registerTypes([
 | `defaults` | array | Дефолтні subject/body по слоту каналу |
 | `user_configurable` | bool | `false` — notifiable не може вимкнути тип чи обмежити його канали, а порожній резолв каналів падає на `default_channels`. Дефолт `true`. Див. «Типи, які не можна кастомізувати» |
 | `log_body` | bool | `false` — у журнал відправок пишеться лише тема, без тіла (OTP-коди, паролі). Дефолт `true`. Див. «Журнал відправок» |
-| `buttons` | array | Кнопки-посилання під повідомленням месенджера: `[['text' => 'Оплатити', 'url' => '[order:payUrl]']]`, токени в обох полях. Див. «Кнопки в месенджерах» |
+| `buttons` | array | Кнопки-посилання під повідомленням месенджера: `[['text' => 'Оплатити', 'url' => '[order:payUrl]']]`, токени в обох полях; `text` може бути словником мов. Див. «Кнопки в месенджерах» |
 | `buttons_by_role` | array | Кнопки для конкретної ролі замість `buttons`: `['admin' => [...]]`; `[]` — без кнопок для ролі |
 | `buttons_columns` | int | Скільки кнопок у ряд. Дефолт `1` |
 
@@ -359,8 +359,19 @@ http(s)-посиланням на публічний хост: непідста�
 
 З увімкненим журналом `TelegramContentResolver` дописує url-кнопки в збережене тіло рядками `[текст] url`.
 
-`options` лежить у самій `notify_templates`, тож з astrotomic/laravel-translatable текст кнопки однаковий для
-всіх локалей. Якщо його треба перекладати — пишіть у `text` токен.
+**Кілька мов.** `text` може бути не рядком, а словником мов — і в `typeDefinition()`, і в `options` шаблону.
+Посилання одне на всі мови:
+
+```php
+'buttons' => [
+    ['text' => ['uk' => 'Оплатити', 'en' => 'Pay'], 'url' => '[order:payUrl]'],
+],
+```
+
+Береться текст поточної локалі, далі `app.fallback_locale`, далі перший непорожній. Laravel перемикає локаль
+на кожного notifiable з `HasLocalePreference` (або через `->locale()`), тож кожен отримувач бачить свою мову.
+`NotifyTemplates::localizeButtonText($text, $locale)` робить те саме для адмінки. `options` лежить у самій
+`notify_templates`, а не в таблиці перекладів astrotomic, тому кнопки перекладаються саме так.
 
 ---
 
@@ -589,6 +600,7 @@ NotifyTemplates::resolveChannels(string $notifyKey, string $roleKey, ?string $te
 NotifyTemplates::resolveDelay(string $notifyKey, string $roleKey, ?string $tenantId): int
 NotifyTemplates::resolveButtons(string $notifyKey, ?string $roleKey, ?string $tenantId, string $channel = 'messenger', ?array $type = null): array
 NotifyTemplates::resolveButtonsColumns(string $notifyKey, ?string $roleKey, ?string $tenantId, string $channel = 'messenger', ?array $type = null): int
+NotifyTemplates::localizeButtonText(string|array $text, ?string $locale = null): string
 
 NotifyTemplates::updateDelivery(string $channel, string $externalId, string $status, array $payload = []): bool
 ```

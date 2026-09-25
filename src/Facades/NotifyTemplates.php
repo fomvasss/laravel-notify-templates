@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Facade;
  * @method static array resolveChannels(string $notifyKey, string $roleKey, ?string $tenantId = null, array $userChannels = [])
  * @method static array resolveButtons(string $notifyKey, ?string $roleKey = null, ?string $tenantId = null, string $channel = 'messenger', ?array $type = null)
  * @method static int resolveButtonsColumns(string $notifyKey, ?string $roleKey = null, ?string $tenantId = null, string $channel = 'messenger', ?array $type = null)
+ * @method static string localizeButtonText(string|array $text, ?string $locale = null)
  * @method static int resolveDelay(string $notifyKey, string $roleKey, ?string $tenantId = null)
  * @method static bool isNotifyEnabled(string $notifyKey, mixed $notifiable)
  * @method static bool isUserConfigurable(string $notifyKey)

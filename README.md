@@ -159,7 +159,7 @@ Or statically via config:
 | `defaults` | array | Default subject/body per channel slot, used as placeholder in the editor when no DB template exists |
 | `user_configurable` | bool | `false` — the notifiable can't opt out of the type or restrict its channels, and an empty channel resolution falls back to `default_channels`. Default `true`. See [Non-configurable types](#non-configurable-types-otp-security-codes) |
 | `log_body` | bool | `false` — the delivery log stores the subject only, never the body (OTP codes, passwords). Default `true`. See [Delivery log](#delivery-log) |
-| `buttons` | array | Link buttons under a messenger message: `[['text' => 'Pay', 'url' => '[order:payUrl]']]`, tokens allowed in both. See [Messenger buttons](#messenger-buttons) |
+| `buttons` | array | Link buttons under a messenger message: `[['text' => 'Pay', 'url' => '[order:payUrl]']]`, tokens allowed in both; `text` may be a locale map. See [Messenger buttons](#messenger-buttons) |
 | `buttons_by_role` | array | Buttons for a specific role, replacing `buttons`: `['admin' => [...]]`; `[]` — no buttons for that role |
 | `buttons_columns` | int | Buttons per row. Default `1` |
 
@@ -597,8 +597,20 @@ buttons (SMS, WhatsApp text) can append the links to the text instead.
 
 With the delivery log on, `TelegramContentResolver` appends url buttons to the logged body as `[text] url`.
 
-`options` lives on `notify_templates` itself, so with astrotomic/laravel-translatable the button text is the
-same for every locale. Use a token in `text` if it has to be translated.
+**Multilingual text.** `text` can be a locale map instead of a string, in `typeDefinition()` and in template
+`options` alike. The url stays shared:
+
+```php
+'buttons' => [
+    ['text' => ['uk' => 'Оплатити', 'en' => 'Pay'], 'url' => '[order:payUrl]'],
+],
+```
+
+The text for the current locale is taken, then `app.fallback_locale`, then the first non-empty entry. Laravel
+switches the locale per notifiable that implements `HasLocalePreference` (or via `->locale()`), so every
+recipient gets their language. `NotifyTemplates::localizeButtonText($text, $locale)` does the same for an admin UI.
+`options` lives on `notify_templates`, not in astrotomic's translation table, so this map is the way to translate
+buttons there.
 
 ---
 
@@ -703,6 +715,8 @@ NotifyTemplates::resolveChannels(string $notifyKey, string $roleKey, ?string $te
 // Messenger buttons, raw: template options.buttons → buttons_by_role[role] → buttons
 NotifyTemplates::resolveButtons(string $notifyKey, ?string $roleKey, ?string $tenantId, string $channel = 'messenger', ?array $type = null): array
 NotifyTemplates::resolveButtonsColumns(string $notifyKey, ?string $roleKey, ?string $tenantId, string $channel = 'messenger', ?array $type = null): int
+// Button text for a locale: plain string as is, locale map → locale → fallback_locale → first filled
+NotifyTemplates::localizeButtonText(string|array $text, ?string $locale = null): string
 
 // Delay in seconds (options.delay in DB is stored in minutes)
 NotifyTemplates::resolveDelay(string $notifyKey, string $roleKey, ?string $tenantId): int

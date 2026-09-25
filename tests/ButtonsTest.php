@@ -56,6 +56,35 @@ class ButtonsTest extends TestCase
         }
     }
 
+    public function test_locale_map_text_follows_the_current_locale(): void
+    {
+        config(['app.fallback_locale' => 'en']);
+        $this->template(['buttons' => [['text' => ['uk' => 'Відстежити', 'en' => 'Track', 'de' => ''], 'url' => '[order:url]']]]);
+
+        app()->setLocale('uk');
+        $this->assertSame('Відстежити', (new ButtonsNotify('client'))->buttons()[0]['text']);
+
+        app()->setLocale('de');
+        $this->assertSame('Track', (new ButtonsNotify('client'))->buttons()[0]['text']);
+    }
+
+    public function test_localize_button_text_falls_back_to_first_filled_entry(): void
+    {
+        config(['app.fallback_locale' => 'en']);
+        $manager = app(\Fomvasss\NotifyTemplates\NotifyTemplatesManager::class);
+
+        $this->assertSame('Pay', $manager->localizeButtonText('Pay', 'uk'));
+        $this->assertSame('Оплатити', $manager->localizeButtonText(['uk' => 'Оплатити', 'en' => ''], 'de'));
+        $this->assertSame('', $manager->localizeButtonText(['uk' => '', 'en' => ' ']));
+    }
+
+    public function test_buttons_without_any_text_are_skipped(): void
+    {
+        $this->template(['buttons' => [['text' => ['uk' => '', 'en' => ''], 'url' => 'https://x.example.com']]]);
+
+        $this->assertSame([], (new ButtonsNotify('client'))->buttons());
+    }
+
     public function test_telegram_log_body_lists_url_buttons(): void
     {
         $response = ['ok' => true, 'result' => [

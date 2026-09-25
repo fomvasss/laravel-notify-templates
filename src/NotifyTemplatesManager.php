@@ -158,9 +158,10 @@ class NotifyTemplatesManager
      * Link buttons shown under a messenger message, raw (tokens not substituted):
      * template options.buttons → typeDefinition buttons_by_role[role] → typeDefinition buttons.
      * A template or role entry that is an array wins even when empty — [] means "no buttons".
+     * `text` is a string or a locale map (see localizeButtonText()).
      *
      * @param array|null $type  typeDefinition() of the notify; defaults to the registered type
-     * @return list<array{text: string, url: string}>
+     * @return list<array{text: string|array<string, string>, url: string}>
      */
     public function resolveButtons(
         string $notifyKey,
@@ -178,8 +179,27 @@ class NotifyTemplatesManager
 
         return array_values(array_filter(
             $buttons,
-            fn($button) => is_array($button) && trim((string) ($button['text'] ?? '')) !== '' && trim((string) ($button['url'] ?? '')) !== '',
+            fn($button) => is_array($button) && $this->localizeButtonText($button['text'] ?? '') !== '' && trim((string) ($button['url'] ?? '')) !== '',
         ));
+    }
+
+    /**
+     * Button text for a locale. A plain string is returned as is; a locale map
+     * (['uk' => 'Оплатити', 'en' => 'Pay']) resolves to the requested locale (the current app
+     * locale by default — Laravel switches it per notifiable that has a preferred locale), then
+     * app.fallback_locale, then the first non-empty entry. Empty entries count as missing.
+     */
+    public function localizeButtonText(mixed $text, ?string $locale = null): string
+    {
+        if (!is_array($text)) {
+            return trim((string) $text);
+        }
+
+        $texts = array_filter(array_map(fn($value) => trim((string) $value), $text), fn($value) => $value !== '');
+
+        return $texts[$locale ?? app()->getLocale()]
+            ?? $texts[(string) config('app.fallback_locale')]
+            ?? (string) reset($texts);
     }
 
     /**

@@ -223,7 +223,8 @@ abstract class BaseNotify extends Notification
     }
 
     /**
-     * Link buttons for a messenger message with prepareText() applied to text and url.
+     * Link buttons for a messenger message with prepareText() applied to text and url; a locale-map
+     * text is resolved to the current locale first.
      * Buttons whose url is not sendable after substitution are dropped — a single bad url
      * (unresolved token, local host) makes Telegram reject the whole message.
      * Render them in the toTelegram() etc. that the host app adds.
@@ -238,7 +239,7 @@ abstract class BaseNotify extends Notification
             $url = trim($this->prepareText((string) $button['url'], $notifiable));
 
             if ($this->isSendableButtonUrl($url)) {
-                $buttons[] = ['text' => $this->prepareText((string) $button['text'], $notifiable), 'url' => $url];
+                $buttons[] = ['text' => $this->prepareText($this->manager()->localizeButtonText($button['text']), $notifiable), 'url' => $url];
             }
         }
 
