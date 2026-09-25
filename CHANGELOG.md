@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-09-25
+
 ### Added
 - Messenger link buttons: `typeDefinition()` keys `buttons`, `buttons_by_role` and `buttons_columns`, overridable per template through `notify_templates.options.buttons` / `options.buttons_columns` (no migration needed). `"buttons": []` in a template removes the type's buttons
 - `BaseNotify::getMessengerButtons($notifiable)` (tokens substituted, unsendable urls dropped) and `getMessengerButtonsColumns()` for the host's `toTelegram()`; override `isSendableButtonUrl()` to change which urls count as sendable
