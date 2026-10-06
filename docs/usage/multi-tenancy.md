@@ -1,0 +1,51 @@
+# Multi-tenancy
+
+Templates and role subscriptions have a nullable `tenant_id` (a string up to 100 characters). `null` rows are global; a tenant's own row wins over the global one.
+
+| Table | Lookup with a tenant |
+|---|---|
+| `notify_templates` | Tenant row preferred, global row as fallback, after slot and role — see [fallback chain](templates.md#fallback-chain) |
+| `notify_role_subscriptions` | The tenant's row if it exists, otherwise the global row |
+
+Without a tenant only global rows are considered.
+
+## Where the tenant comes from
+
+1. `$this->tenantId` of the notification, when set:
+
+   ```php
+   public function __construct(protected Order $order, protected string $roleKey)
+   {
+       $this->tenantId = (string) $order->shop_id;
+   }
+   ```
+
+2. Otherwise `config('notify-templates.tenant_id')` — `null`, a string, or a callable:
+
+   ```php
+   'tenant_id' => [\App\Support\CurrentShop::class, 'id'],
+   ```
+
+The same fallback applies to every manager method that takes `?string $tenantId` (`resolveTemplate()`, `resolveChannels()`, `resolveDelay()`, `resolveButtons()`, `resolveButtonsColumns()`) and to the delivery log.
+
+> [!WARNING]
+> A callable runs at send time. In a queued notification that is the queue worker, where request-bound state (the current domain, the logged-in user's shop) is gone. Set `$this->tenantId` in the constructor — it is serialized with the notification — or make sure the callable works in a worker.
+
+> [!NOTE]
+> Passing `null` doesn't mean "global": `null` is replaced by the config value. With a configured tenant there is no way to resolve only global rows through the manager.
+
+The callable must return a `string` or `null` — cast integer ids. A closure in the config breaks `config:cache`; use an array callable or a `'Class::method'` string.
+
+## In your own queries
+
+Model scopes and `resolve()` methods don't apply the config fallback. Resolve the tenant explicitly:
+
+```php
+$tenantId = NotifyTemplates::resolveTenantId(null);
+
+NotifyRoleSubscription::query()->active()->forNotify($key)->forTenant($tenantId)->get();
+```
+
+## Uniqueness
+
+The unique indexes include `tenant_id` (through `COALESCE(tenant_id, '')`), so each tenant can have its own template per slot and role and its own subscription per role, next to the global ones.
