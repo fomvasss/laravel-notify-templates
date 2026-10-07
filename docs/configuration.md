@@ -43,7 +43,7 @@ Used in two places:
 1. `resolveChannels()` — an **active** subscription whose `channels` is empty or `null` resolves to `default_channels`.
 2. `BaseNotify::via()` — when nothing survived resolution, a type with `'user_configurable' => false` falls back to `default_channels`. Regular types send nothing.
 
-In the second case the values are returned as they are, without `mapChannel()`, so they must be channel names Laravel understands (`mail`, `database`, a channel class).
+In both cases the values are channel slugs and go through `mapChannel()`: `mail` is skipped for a notifiable without a mail route, and your own channels need a `mapChannel()` entry ([Custom channels](usage/custom-channels.md)).
 
 ## tenant_id
 

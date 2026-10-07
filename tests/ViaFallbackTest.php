@@ -74,4 +74,18 @@ class ViaFallbackTest extends TestCase
 
         $this->assertSame(['mail'], (new SampleNotify('client'))->via($user));
     }
+
+    public function test_default_channels_fallback_goes_through_map_channel(): void
+    {
+        app(NotifyTemplatesManager::class)->registerType([
+            'key' => 'SampleEvent',
+            'name' => 'Sample event',
+            'group' => 'test',
+            'user_configurable' => false,
+        ]);
+        config(['notify-templates.default_channels' => ['mail', 'telegram', 'database']]);
+
+        // no email -> mail skipped; telegram is not mapped by the base class
+        $this->assertSame(['database'], (new SampleNotify('client'))->via(SampleUser::withId(1)));
+    }
 }

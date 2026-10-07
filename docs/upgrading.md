@@ -11,6 +11,10 @@ php artisan migrate
 
 and compare your published `config/notify-templates.php` with the package's: nested arrays (`tables`, `models`, `log`) are not merged, so new keys must be copied in by hand.
 
+## 0.12.3 — default_channels fallback
+
+The `default_channels` fallback of non-configurable types now goes through `mapChannel()`, like every other channel. If you put a channel class there (`TurboSmsChannel::class`), it is now dropped: put a slug instead and map it in `mapChannel()`.
+
 ## 0.11 / 0.12 — messenger buttons
 
 No migration. New optional `typeDefinition()` keys `buttons`, `buttons_by_role`, `buttons_columns`, and template `options.buttons`. Button text may be a locale map since 0.12. `TelegramContentResolver` now appends url buttons to the logged body.

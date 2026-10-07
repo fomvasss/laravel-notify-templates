@@ -133,7 +133,13 @@ abstract class BaseNotify extends Notification
         // empty result is a legitimate "don't send": user opt-outs and is_active=false must
         // not be silently overridden with default_channels.
         if (!$result && !$this->manager()->isUserConfigurable($this->getNotifyKey())) {
-            $result = config('notify-templates.default_channels', ['mail']);
+            foreach (config('notify-templates.default_channels', ['mail']) as $channel) {
+                $mapped = $this->mapChannel($channel, $notifiable);
+
+                if ($mapped !== null) {
+                    $result[] = $mapped;
+                }
+            }
         }
 
         if ($this->onlyChannels) {

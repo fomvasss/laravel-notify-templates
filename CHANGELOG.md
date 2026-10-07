@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [0.12.3] - 2026-10-07
+
+### Fixed
+- The `default_channels` fallback of `'user_configurable' => false` types skipped `mapChannel()`: `mail` was returned for a notifiable without a mail route, and host channel slugs reached Laravel unmapped. The fallback now maps them like resolved channels. A channel class written directly into `default_channels` is dropped now — use a slug and `mapChannel()`
+
 ## [0.12.2] - 2026-10-07
 
 ### Fixed
