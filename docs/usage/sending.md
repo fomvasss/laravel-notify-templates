@@ -106,6 +106,6 @@ Notification::route('mail', 'guest@example.com')
 | custom (Telegram, SMS, …) | your `to{Channel}()` | Usually `getMessengerBody()` — slot `messenger`, falling back to `mail` |
 
 > [!NOTE]
-> The default `toMail()` puts the whole body into one `MailMessage::line()`. Laravel escapes HTML in a line and joins its line breaks into one paragraph, so a multi-paragraph or HTML body needs a custom `toMail()` with its own view — see [Custom channels](custom-channels.md#a-custom-mail-view).
+> The default `toMail()` treats the body as plain text: each paragraph (separated by a blank line) becomes one `MailMessage::line()`, line breaks inside it become `<br>`, HTML is escaped. Before 0.12.5 the whole body was one line with its breaks joined. An HTML body needs a custom `toMail()` with its own view — see [Custom channels](custom-channels.md#a-custom-mail-view).
 
 Token substitution is your `prepareText()` — see [Templates](templates.md#tokens).

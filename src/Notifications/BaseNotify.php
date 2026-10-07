@@ -8,6 +8,7 @@ use Fomvasss\NotifyTemplates\Models\NotifyTemplate;
 use Fomvasss\NotifyTemplates\NotifyTemplatesManager;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\HtmlString;
 
 abstract class BaseNotify extends Notification
 {
@@ -197,9 +198,15 @@ abstract class BaseNotify extends Notification
         $subject = $template?->subject ?: $this->getSubjectDefault();
         $body = $template?->body ?: $this->getBodyDefault();
 
-        return (new MailMessage())
-            ->subject($this->prepareText($subject, $notifiable))
-            ->line($this->prepareText($body, $notifiable));
+        $message = (new MailMessage())->subject($this->prepareText($subject, $notifiable));
+
+        // one line() per paragraph, line breaks kept — a single line() joined them all. Still
+        // escaped: token values from prepareText() are user data, so an HTML body needs its own view
+        foreach (preg_split('/\R\s*\R/', trim($this->prepareText($body, $notifiable))) as $paragraph) {
+            $message->line(new HtmlString(nl2br(e(trim($paragraph)), false)));
+        }
+
+        return $message;
     }
 
     // -------------------------------------------------------------------------

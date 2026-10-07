@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [0.12.5] - 2026-10-07
+
+### Fixed
+- The default `toMail()` put the whole body into one `line()`, so a multi-paragraph template arrived as a single paragraph with its line breaks joined. Each paragraph (separated by a blank line) is now its own line and line breaks become `<br>`; HTML is still escaped
+
 ## [0.12.4] - 2026-10-07
 
 ### Fixed

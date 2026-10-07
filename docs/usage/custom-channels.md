@@ -80,7 +80,7 @@ Messengers have length limits and their own markup rules; trimming and stripping
 
 ## A custom mail view
 
-The default `toMail()` puts the body into a single `line()`, where Laravel escapes HTML and joins line breaks. For HTML templates render your own view:
+The default `toMail()` treats the body as plain text: a blank line starts a new paragraph, a line break becomes `<br>`, and HTML is escaped. For HTML templates render your own view — and escape the token values your `prepareText()` inserts, since they come from user data:
 
 ```php
 public function toMail(mixed $notifiable): MailMessage
