@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [0.12.4] - 2026-10-07
+
+### Fixed
+- A discovered notify class whose `typeDefinition()['key']` differed from `notifyKey()` was registered under one key and sent under the other, so its settings, `user_configurable` and buttons were silently not found. Discovery now throws a `LogicException` naming the class; a discovered class may omit `key` to take `notifyKey()`
+
 ## [0.12.3] - 2026-10-07
 
 ### Fixed

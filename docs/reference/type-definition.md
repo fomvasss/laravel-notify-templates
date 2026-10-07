@@ -4,7 +4,7 @@ The array returned by `BaseNotify::typeDefinition()`, passed to `registerType()`
 
 | Key | Type | Default | Used by | Description |
 |---|---|---|---|---|
-| `key` | `string` | — | registry | Unique type key, e.g. `OrderOrdered`. Required. Must equal the class's `notifyKey()` |
+| `key` | `string` | the class's `notifyKey()` (discovery) | registry | Unique type key, e.g. `OrderOrdered`. Required in `registerType()` and `config('notify-templates.types')`; a discovered class may omit it. Must equal the class's `notifyKey()` — discovery throws `LogicException` otherwise |
 | `name` | `string` | — | your UI | Human-readable label |
 | `group` | `string` | — | `getTypes($group)`, your UI | Group, e.g. `order` |
 | `weight` | `int` | — | your UI | Sort order within a group; lower first. The registry doesn't sort |

@@ -63,9 +63,26 @@ class NotifyTemplatesManager
 
             $definition = $class::typeDefinition();
 
-            if (!empty($definition['key'])) {
-                $this->registerType($definition);
+            if ($definition === []) {
+                continue;
             }
+
+            // the class sends under notifyKey(), the registry answers under 'key' — two different
+            // values made settings, user_configurable and buttons silently not found at send time
+            if (empty($definition['key'])) {
+                $definition['key'] = $class::notifyKey();
+            }
+
+            if ($definition['key'] !== $class::notifyKey()) {
+                throw new \LogicException(sprintf(
+                    '%s: typeDefinition() key "%s" differs from notifyKey() "%s". Make them equal — override notifyKey() or fix the key.',
+                    $class,
+                    $definition['key'],
+                    $class::notifyKey(),
+                ));
+            }
+
+            $this->registerType($definition);
         }
     }
 

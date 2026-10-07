@@ -79,6 +79,21 @@ class ManagerTest extends TestCase
         $this->assertNotNull($this->manager->getType('NestedEvent'));
     }
 
+    public function test_discover_in_takes_the_key_from_notify_key_when_missing(): void
+    {
+        $this->manager->discoverIn(__DIR__ . '/DiscoveryFixtures/KeyFromClass');
+
+        $this->assertSame('Order shipped', $this->manager->getType('OrderShipped')['name']);
+    }
+
+    public function test_discover_in_refuses_a_key_that_differs_from_notify_key(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('"SomethingElse" differs from notifyKey() "Mismatch"');
+
+        $this->manager->discoverIn(__DIR__ . '/DiscoveryFixtures/Mismatch');
+    }
+
     public function test_discover_in_ignores_nonexistent_path(): void
     {
         $this->manager->discoverIn('/tmp/nonexistent-notify-dir');

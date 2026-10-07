@@ -46,7 +46,7 @@ final class OrderOrderedNotify extends BaseNotify implements ShouldQueue
 All keys are listed in [typeDefinition() keys](../reference/type-definition.md).
 
 > [!WARNING]
-> The type key that the class uses at send time is `notifyKey()` — the class name without the trailing `Notify` (`OrderOrderedNotify` → `OrderOrdered`). The registry stores the type under `typeDefinition()['key']`. Keep the two equal. If the class name doesn't follow the convention, override `notifyKey()` too; otherwise lookups by key at send time (`user_configurable`, buttons) don't find the registered type.
+> The type key that the class uses at send time is `notifyKey()` — the class name without the trailing `Notify` (`OrderOrderedNotify` → `OrderOrdered`). The registry stores the type under `typeDefinition()['key']`. Keep the two equal: since 0.12.4 discovery throws a `LogicException` naming the class when they differ, and a discovered class may leave `key` out to take `notifyKey()`. If the class name doesn't follow the convention, override `notifyKey()`. Types registered by hand (`registerType()`, config) are not checked.
 
 ```php
 public static function notifyKey(): string
