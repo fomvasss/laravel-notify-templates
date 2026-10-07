@@ -134,18 +134,25 @@ class NotifyTemplatesManager
     // -------------------------------------------------------------------------
 
     /**
-     * Falls back to config('notify-templates.tenant_id') when no explicit tenantId is passed.
-     * The config value can be a plain string or a callable returning one.
+     * Falls back to config('notify-templates.tenant_id') when no explicit tenantId is passed;
+     * '' asks for the global rows only, skipping the fallback. The config value can be a plain
+     * string/int or a callable returning one.
      */
     public function resolveTenantId(?string $tenantId): ?string
     {
         if ($tenantId !== null) {
-            return $tenantId;
+            return $tenantId === '' ? null : $tenantId;
         }
 
         $configured = config('notify-templates.tenant_id');
 
-        return is_callable($configured) ? $configured() : $configured;
+        // a plain string is a callable only as 'Class::method' — otherwise a tenant id that
+        // happens to be a PHP function name ('date', 'max') would be called
+        if ($configured instanceof \Closure || is_array($configured) || (is_string($configured) && str_contains($configured, '::'))) {
+            $configured = $configured();
+        }
+
+        return $configured === null || $configured === '' ? null : (string) $configured;
     }
 
     // -------------------------------------------------------------------------

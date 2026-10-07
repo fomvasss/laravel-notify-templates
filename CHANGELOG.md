@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [0.12.6] - 2026-10-07
+
+### Fixed
+- `tenant_id` from the config (or its callable) as an integer threw a `TypeError`; it is now cast to a string
+- A configured `tenant_id` string that is also a PHP function name (`date`, `max`) was called as a callable. Only closures, array callables and `'Class::method'` strings are called now
+- There was no way to ask the manager for global rows only while a tenant is configured. An empty `$tenantId` (`''`) now means "global", skipping the config fallback
+
 ## [0.12.5] - 2026-10-07
 
 ### Fixed

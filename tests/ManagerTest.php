@@ -94,6 +94,26 @@ class ManagerTest extends TestCase
         $this->manager->discoverIn(__DIR__ . '/DiscoveryFixtures/Mismatch');
     }
 
+    public function test_tenant_id_from_config_is_cast_and_only_class_method_strings_are_called(): void
+    {
+        config(['notify-templates.tenant_id' => fn () => 42]);
+        $this->assertSame('42', $this->manager->resolveTenantId(null));
+
+        config(['notify-templates.tenant_id' => 'date']);
+        $this->assertSame('date', $this->manager->resolveTenantId(null));
+
+        config(['notify-templates.tenant_id' => 7]);
+        $this->assertSame('7', $this->manager->resolveTenantId(null));
+    }
+
+    public function test_an_empty_tenant_id_asks_for_global_rows(): void
+    {
+        config(['notify-templates.tenant_id' => 'shop-ua']);
+
+        $this->assertNull($this->manager->resolveTenantId(''));
+        $this->assertSame('shop-ua', $this->manager->resolveTenantId(null));
+    }
+
     public function test_discover_in_ignores_nonexistent_path(): void
     {
         $this->manager->discoverIn('/tmp/nonexistent-notify-dir');
