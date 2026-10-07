@@ -40,6 +40,31 @@ class MapChannelTest extends TestCase
         $this->assertSame(['mail', 'telegram'], (new TelegramNotify('client'))->via($user));
     }
 
+    public function test_mail_goes_to_an_on_demand_recipient(): void
+    {
+        $this->sub(['mail']);
+
+        $notifiable = (new \Illuminate\Notifications\AnonymousNotifiable())->route('mail', 'guest@example.com');
+
+        $this->assertSame(['mail'], (new TelegramNotify('client'))->via($notifiable));
+    }
+
+    public function test_mail_uses_route_notification_for_mail(): void
+    {
+        $this->sub(['mail']);
+
+        $user = new class extends \Illuminate\Database\Eloquent\Model {
+            use \Illuminate\Notifications\Notifiable;
+
+            public function routeNotificationForMail(): string
+            {
+                return 'billing@example.com';
+            }
+        };
+
+        $this->assertSame(['mail'], (new TelegramNotify('client'))->via($user));
+    }
+
     public function test_mapped_channel_is_dropped_without_route(): void
     {
         $this->sub(['mail', 'telegram']);

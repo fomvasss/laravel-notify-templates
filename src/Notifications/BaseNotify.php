@@ -170,8 +170,11 @@ abstract class BaseNotify extends Notification
     protected function mapChannel(string $channel, mixed $notifiable): ?string
     {
         return match ($channel) {
-            // mail is silently skipped when the notifiable has no email property
-            'mail' => !empty($notifiable->email) ? 'mail' : null,
+            // mail is silently skipped when the notifiable has no mail route; the route covers
+            // Notification::route('mail', ...) and routeNotificationForMail(), not only ->email
+            'mail' => !empty(method_exists($notifiable, 'routeNotificationFor')
+                ? $notifiable->routeNotificationFor('mail', $this)
+                : $notifiable->email ?? null) ? 'mail' : null,
             'database', 'broadcast' => $channel,
             default => null,
         };

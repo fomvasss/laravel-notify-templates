@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [0.12.2] - 2026-10-07
+
+### Fixed
+- `mail` was dropped for on-demand recipients (`Notification::route('mail', ...)`) and for models whose address comes from `routeNotificationForMail()`: only `$notifiable->email` was checked. The mail route is checked now. A `mapChannel()` override written as a workaround can be removed
+
 ## [0.12.1] - 2026-10-07
 
 ### Fixed

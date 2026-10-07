@@ -56,7 +56,7 @@ Receives a slug that survived the subscription and user preference steps and ret
 
 | Slug | Result |
 |---|---|
-| `mail` | `'mail'` when `$notifiable->email` is not empty, otherwise `null` |
+| `mail` | `'mail'` when the notifiable has a mail route (`routeNotificationFor('mail')`, or `->email` without that method), otherwise `null` |
 | `database`, `broadcast` | the slug |
 | anything else | `null` |
 
@@ -65,7 +65,7 @@ So a slug you don't map is silently dropped. Everything else in `via()` — opt-
 > [!WARNING]
 > Don't copy `via()` into the host app. A copy freezes the resolution chain at the version you copied: fixes to opt-out handling or fallback rules in later releases never reach it. Override `mapChannel()` instead (available since 0.7.0).
 
-For mail to on-demand recipients or models with `routeNotificationForMail()`, see [Sending — on-demand recipients](sending.md#on-demand-recipients).
+For mail to on-demand recipients, see [Sending — on-demand recipients](sending.md#on-demand-recipients).
 
 ## Message helpers
 

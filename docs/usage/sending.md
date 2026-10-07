@@ -88,24 +88,14 @@ Notification::sendNow($user, new UserOtpNotify(roleKey: 'client', code: $code), 
 
 ## On-demand recipients
 
-Sending to an address without a model (`Notification::route()`) works, but the built-in `mapChannel()` drops `mail` for it: it checks `$notifiable->email`, which `AnonymousNotifiable` doesn't have. Map mail by the route instead — this works for models and on-demand recipients alike:
-
-```php
-protected function mapChannel(string $channel, mixed $notifiable): ?string
-{
-    return match ($channel) {
-        'mail' => $notifiable->routeNotificationFor('mail', $this) ? 'mail' : null,
-        default => parent::mapChannel($channel, $notifiable),
-    };
-}
-```
+Send to an address without a model with `Notification::route()`:
 
 ```php
 Notification::route('mail', 'guest@example.com')
     ->notify(new OrderOrderedNotify($order, 'guest'));
 ```
 
-The same check also fixes models whose address isn't in an `email` attribute but in a `routeNotificationForMail()` method. For an on-demand recipient there are no user preferences: `isNotifyEnabled()` is always `true` and no per-user channel preference applies; the role subscription still does. See [Custom channels](custom-channels.md) for the rest of `mapChannel()`.
+`mail` is kept when the notifiable has a mail route — `routeNotificationFor('mail')`, which covers on-demand recipients, `routeNotificationForMail()` and the `email` attribute; a notifiable without `routeNotificationFor()` falls back to `->email`. Before 0.12.2 only `->email` was checked, so on-demand mail and `routeNotificationForMail()` were silently dropped. For an on-demand recipient there are no user preferences: `isNotifyEnabled()` is always `true` and no per-user channel preference applies; the role subscription still does. See [Custom channels](custom-channels.md) for the rest of `mapChannel()`.
 
 ## What each channel sends
 
