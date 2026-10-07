@@ -24,7 +24,7 @@
 | `only(array $channels)` | `static` | Keep only these channels of the resolved ones |
 | `except(array $channels)` | `static` | Remove these channels from the resolved ones |
 | `via(mixed $notifiable)` | `array` | Channel resolution, see [Channel resolution](../usage/channels.md) |
-| `toMail(mixed $notifiable)` | `MailMessage` | Subject and body of the `mail` slot through `prepareText()`, body in one `line()` |
+| `toMail(mixed $notifiable)` | `MailMessage` | Subject and body of the `mail` slot through `prepareText()`; body as plain text — a blank line starts a paragraph (one `line()` each), a line break becomes `<br>`, HTML is escaped |
 | `toArray(mixed $notifiable)` | `array` | `['message' => strip_tags(getMessengerBody())]` for `database` / `broadcast` |
 | `getNotifyKey()` | `string` | `static::notifyKey()` |
 | `getRoleKey()` | `?string` | `$roleKey`, or `null` when not set |
@@ -37,7 +37,7 @@
 | Method | Returns | Description |
 |---|---|---|
 | `prepareText(string $text, mixed $notifiable)` | `string` | Token substitution hook. Default: returns `$text` unchanged |
-| `mapChannel(string $channel, mixed $notifiable)` | `?string` | Slug → Laravel channel, or `null` to drop. Built-in: `mail` when `$notifiable->email` is set, `database`, `broadcast`. See [Custom channels](../usage/custom-channels.md) |
+| `mapChannel(string $channel, mixed $notifiable)` | `?string` | Slug → Laravel channel, or `null` to drop. Built-in: `mail` when the notifiable has a mail route (`routeNotificationFor('mail')`, else `$notifiable->email`), `database`, `broadcast`. See [Custom channels](../usage/custom-channels.md) |
 | `resolveTemplate(string $channel)` | `?NotifyTemplate` | Template row for a slot with this notification's key, role and tenant |
 | `getMessengerBody(mixed $notifiable)` | `string` | `messenger` slot → `mail` slot → `defaults.mail.body`, through `prepareText()` |
 | `getMessengerButtons(mixed $notifiable)` | `array` | `[['text' => string, 'url' => string], ...]` — localized, through `prepareText()`, unsendable urls dropped |

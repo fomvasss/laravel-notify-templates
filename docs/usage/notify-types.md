@@ -66,7 +66,7 @@ On every boot the service provider scans the directories in `config('notify-temp
 NotifyTemplates::discoverIn(app_path('Domain/Notifications'));
 ```
 
-How a file is recognized: the scanner reads the `namespace` line and the first line starting with `class` or `final class`, then checks the class with `class_exists()` and `is_subclass_of()`. A class declared as `readonly class` or `final readonly class` is not detected — register it manually. Abstract base classes are skipped, which is what you want for your app's own base notification.
+How a file is recognized: the scanner reads the `namespace` line and the first line starting with `class` or `final class`, then checks the class with `class_exists()` and `is_subclass_of()`. Abstract base classes are skipped, which is what you want for your app's own base notification.
 
 > [!NOTE]
 > Discovery reads and autoloads every PHP file in the directories on each boot (each request under PHP-FPM, once per worker under Octane or a queue worker). With a large `app/Notifications`, consider registering types explicitly and setting `discover` to `[]`.

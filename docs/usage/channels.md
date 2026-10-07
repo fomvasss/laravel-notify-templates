@@ -21,7 +21,7 @@
                     intersected with steps 1–2
         ↓
 4. Mapping          mapChannel($slug, $notifiable) → channel name / class, or null to drop
-                    built-in: mail needs $notifiable->email; database, broadcast pass; anything else is dropped
+                    built-in: mail needs a mail route (routeNotificationFor('mail'), else ->email); database, broadcast pass; anything else is dropped
         ↓
 5. Guarantee        nothing left and 'user_configurable' => false → config('notify-templates.default_channels')
         ↓
@@ -51,7 +51,7 @@ Steps 1–3 work with channel slugs (`mail`, `telegram`, `sms`); steps 5–6 wit
 
 For regular types an empty result means "don't send", and that is final: a user's opt-out or an inactive subscription is never overridden.
 
-A type with `'user_configurable' => false` (login codes, security alerts) falls back to `default_channels` when nothing survived — no subscription, inactive subscription, or no route found by `mapChannel()`. The fallback values are returned as they are, without `mapChannel()`. With the default `['mail']` and a notifiable without an address, Laravel's mail channel skips the send silently.
+A type with `'user_configurable' => false` (login codes, security alerts) falls back to `default_channels` when nothing survived — no subscription, inactive subscription, or no route found by `mapChannel()`. The fallback values go through `mapChannel()` like resolved ones (since 0.12.3): with the default `['mail']` and a notifiable without a mail route nothing is sent, and your own slugs need a `mapChannel()` entry.
 
 > [!NOTE]
 > Before 0.6.0 every type fell back to `default_channels` when the result was empty. See [Upgrading](../upgrading.md).
