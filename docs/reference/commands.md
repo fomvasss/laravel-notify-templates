@@ -25,8 +25,7 @@ A `stubs/notify.stub` file in the project root replaces the package stub.
 php artisan vendor:publish --tag=notify-templates-migrations
 ```
 
-> [!WARNING]
-> On a fresh install all three migrations get the same timestamp and `add_content_to_notify_logs_table` runs first and fails. Delete it — see [Installation](../installation.md#install).
+Each migration gets a timestamp one second later than the previous one, so they run in the listed order.
 
 ## Pruning the log
 

@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-10-07
+
+### Fixed
+- `migrate` on a fresh install failed with "table notify_logs doesn't exist": the published migrations shared one timestamp and `add_content_to_notify_logs_table` ran before `create_notify_logs_table`. They now get increasing timestamps. Migrations published by an older version keep their names — delete `*_add_content_to_notify_logs_table.php` if it has not run yet
+- Rolling back `add_content_to_notify_logs_table` no longer drops `notify_logs.subject` / `body`, which on a fresh install belong to `create_notify_logs_table`
+
 ## [0.12.0] - 2026-09-25
 
 ### Added

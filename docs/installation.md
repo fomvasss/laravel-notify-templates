@@ -23,8 +23,8 @@ php artisan vendor:publish --tag=notify-templates-migrations
 php artisan migrate
 ```
 
-> [!WARNING]
-> On a fresh install the command publishes three migrations with the same timestamp, and Laravel runs them in file name order: `add_content_to_notify_logs_table` sorts before `create_notify_logs_table` and fails with "table notify_logs doesn't exist". On a fresh install `add_content_to_notify_logs_table` is not needed — delete it, or rename it so its timestamp is later than `create_notify_logs_table`. It exists only for installs that created `notify_logs` on 0.8.x.
+> [!NOTE]
+> Before 0.12.1 the three migrations were published with the same timestamp, `add_content_to_notify_logs_table` ran first and failed with "table notify_logs doesn't exist". If you published them on an older version, delete that file (it is only for installs that created `notify_logs` on 0.8.x) or give it a later timestamp than `create_notify_logs_table`.
 
 Each migration is published only if a file with the same name suffix is not in `database/migrations` yet, so running the command again after an upgrade publishes only the new ones.
 

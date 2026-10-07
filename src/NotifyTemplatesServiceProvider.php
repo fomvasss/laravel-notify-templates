@@ -53,11 +53,12 @@ class NotifyTemplatesServiceProvider extends ServiceProvider
     private function publishMigrations(): void
     {
         // notify_logs ships as its own migration so existing installs can publish just it
-        foreach (['create_notifytemplates_tables', 'create_notify_logs_table', 'add_content_to_notify_logs_table'] as $migration) {
+        // each next migration gets a later timestamp, otherwise they run in alphabetical order
+        foreach (['create_notifytemplates_tables', 'create_notify_logs_table', 'add_content_to_notify_logs_table'] as $offset => $migration) {
             if (!glob(database_path("migrations/*_{$migration}.php"))) {
                 $this->publishes([
                     __DIR__."/../database/migrations/{$migration}.php.stub" => database_path(
-                        'migrations/'.date('Y_m_d_His')."_{$migration}.php"
+                        'migrations/'.now()->addSeconds($offset)->format('Y_m_d_His')."_{$migration}.php"
                     ),
                 ], 'notify-templates-migrations');
             }

@@ -31,8 +31,6 @@ php artisan vendor:publish --tag=notify-templates-migrations
 php artisan migrate
 ```
 
-> **Fresh install:** delete the published `*_add_content_to_notify_logs_table.php` before `migrate` — it gets the same timestamp as `create_notify_logs_table`, runs first and fails. It is only for upgrades from 0.8.x.
-
 ## Quick start
 
 ```bash

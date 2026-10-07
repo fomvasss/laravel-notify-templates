@@ -20,10 +20,9 @@ return new class extends Migration
         });
     }
 
+    // No-op: on a fresh install the columns belong to the create migration, and up() cannot
+    // record whether it added them. Leaving two nullable columns after a rollback is harmless.
     public function down(): void
     {
-        Schema::table('notify_logs', function (Blueprint $table) {
-            $table->dropColumn(['subject', 'body']);
-        });
     }
 };
