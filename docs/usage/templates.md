@@ -30,19 +30,29 @@ The slot is not the delivery channel — several channels can share one slot.
 |---|---|
 | `mail` | `toMail()`; also the fallback of `getMessengerBody()` |
 | `messenger` | `getMessengerBody()` — `toArray()` (database/broadcast) and your Telegram, SMS, … methods; [buttons](messenger-buttons.md) |
-| anything else | Your own code: `$this->resolveTemplate('sms')` inside the Notify class |
+| a channel's own slot (`telegram`, `sms`, …) | `getMessengerBody($notifiable, $slot)` — overrides `messenger`, see below |
+| anything else | Your own code: `$this->resolveTemplate('push')` inside the Notify class |
 
-A host app can, for instance, try an `sms` slot first and fall back to `messenger`. Keep in mind that a custom slot is resolved through the same chain, so rows with `channel = null` match it too:
+### Per-channel text
+
+All messengers share the `messenger` text by default. To give one channel its own text, set its slot in [`channel_options`](../configuration.md#channel_options) and pass that slot when building the message:
 
 ```php
-public function toTurboSms(mixed $notifiable): string
-{
-    $sms = $this->resolveTemplate('sms')?->body;
-    $text = $sms ? $this->prepareText($sms, $notifiable) : $this->getMessengerBody($notifiable);
+// config/notify-templates.php
+'channel_options' => [
+    'telegram' => ['slot' => 'telegram'],
+],
 
-    return Str::limit(strip_tags($text), 660);
+// your base notification
+public function toTelegram(mixed $notifiable): TelegramMessage
+{
+    $slot = NotifyTemplates::getChannel('telegram')['slot'];
+
+    return TelegramMessage::create()->line($this->getMessengerBody($notifiable, $slot));
 }
 ```
+
+The `telegram` row is an override, not a copy: `getMessengerBody()` reads it only when it has a body, otherwise the `messenger` row, then the `mail` row, then `defaults.mail.body`. Buttons follow the same order per option — a `telegram` row without `options.buttons` keeps the buttons of the `messenger` row. Rows with `channel = null` are never taken for an override. Without the config entry the slot is `messenger` and nothing changes.
 
 ## Fallback chain
 

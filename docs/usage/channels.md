@@ -30,7 +30,7 @@
 
 Steps 1–3 work with channel slugs (`mail`, `telegram`, `sms`); steps 5–6 with what `mapChannel()` returned.
 
-`typeDefinition()['channels']` and `config('notify-templates.channels')` are not part of this chain. They are the list of checkboxes in your subscription form (`getTypeChannels()`).
+`typeDefinition()['channels']` and `config('notify-templates.channels')` are not part of this chain. They are the list of checkboxes in your subscription form (`getTypeChannels()`); labels, icons and the template slot of each channel come from [`channel_options`](../configuration.md#channel_options) via `getChannels()`.
 
 ## Scenarios
 

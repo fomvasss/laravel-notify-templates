@@ -226,11 +226,13 @@ abstract class BaseNotify extends Notification
 
     /**
      * Resolved messenger body with prepareText applied.
-     * Use in toTelegram(), toTurboSms(), etc. that the host app adds.
+     * Use in toTelegram(), toTurboSms(), etc. that the host app adds. Pass the channel's slot
+     * (NotifyTemplates::getChannel('telegram')['slot']) to let a channel override the shared text:
+     * its own row → `messenger` row → `mail` row → defaults.mail.body.
      */
-    protected function getMessengerBody(mixed $notifiable): string
+    protected function getMessengerBody(mixed $notifiable, string $slot = 'messenger'): string
     {
-        $template = $this->resolveTemplate('messenger')
+        $template = $this->manager()->resolveMessengerTemplate($this->getNotifyKey(), $slot, $this->roleKey, $this->tenantId)
             ?? $this->resolveTemplate('mail');
 
         $body = $template?->body ?: $this->getBodyDefault();
@@ -243,15 +245,15 @@ abstract class BaseNotify extends Notification
      * text is resolved to the current locale first.
      * Buttons whose url is not sendable after substitution are dropped — a single bad url
      * (unresolved token, local host) makes Telegram reject the whole message.
-     * Render them in the toTelegram() etc. that the host app adds.
+     * Render them in the toTelegram() etc. that the host app adds. $slot — as in getMessengerBody().
      *
      * @return list<array{text: string, url: string}>
      */
-    protected function getMessengerButtons(mixed $notifiable): array
+    protected function getMessengerButtons(mixed $notifiable, string $slot = 'messenger'): array
     {
         $buttons = [];
 
-        foreach ($this->manager()->resolveButtons($this->getNotifyKey(), $this->getRoleKey(), $this->tenantId, 'messenger', static::typeDefinition()) as $button) {
+        foreach ($this->manager()->resolveButtons($this->getNotifyKey(), $this->getRoleKey(), $this->tenantId, $slot, static::typeDefinition()) as $button) {
             $url = trim($this->prepareText((string) $button['url'], $notifiable));
 
             if ($this->isSendableButtonUrl($url)) {
@@ -262,9 +264,9 @@ abstract class BaseNotify extends Notification
         return $buttons;
     }
 
-    protected function getMessengerButtonsColumns(): int
+    protected function getMessengerButtonsColumns(string $slot = 'messenger'): int
     {
-        return $this->manager()->resolveButtonsColumns($this->getNotifyKey(), $this->getRoleKey(), $this->tenantId, 'messenger', static::typeDefinition());
+        return $this->manager()->resolveButtonsColumns($this->getNotifyKey(), $this->getRoleKey(), $this->tenantId, $slot, static::typeDefinition());
     }
 
     /**

@@ -71,9 +71,9 @@ For mail to on-demand recipients, see [Sending — on-demand recipients](sending
 
 | Method | Returns |
 |---|---|
-| `getMessengerBody($notifiable)` | Body of the `messenger` slot, falling back to the `mail` slot, then `defaults.mail.body`; through `prepareText()` |
-| `getMessengerButtons($notifiable)` | Link buttons, see [Messenger buttons](messenger-buttons.md) |
-| `getMessengerButtonsColumns()` | Buttons per row |
+| `getMessengerBody($notifiable, $slot = 'messenger')` | Body of the `messenger` slot (or of a channel's own slot, see [per-channel text](templates.md#per-channel-text)), falling back to the `mail` slot, then `defaults.mail.body`; through `prepareText()` |
+| `getMessengerButtons($notifiable, $slot = 'messenger')` | Link buttons, see [Messenger buttons](messenger-buttons.md) |
+| `getMessengerButtonsColumns($slot = 'messenger')` | Buttons per row |
 | `resolveTemplate($slot)` | The `NotifyTemplate` row for any slot, or `null` |
 
 Messengers have length limits and their own markup rules; trimming and stripping HTML per channel is up to your `to{Channel}()`.

@@ -31,13 +31,18 @@ final class ButtonsNotify extends BaseNotify
         return str_replace('[order:url]', $this->orderUrl, $text);
     }
 
-    public function buttons(mixed $notifiable = null): array
+    public function buttons(mixed $notifiable = null, string $slot = 'messenger'): array
     {
-        return $this->getMessengerButtons($notifiable);
+        return $this->getMessengerButtons($notifiable, $slot);
     }
 
-    public function columns(): int
+    public function columns(string $slot = 'messenger'): int
     {
-        return $this->getMessengerButtonsColumns();
+        return $this->getMessengerButtonsColumns($slot);
+    }
+
+    public function body(string $slot = 'messenger'): string
+    {
+        return $this->getMessengerBody(null, $slot);
     }
 }

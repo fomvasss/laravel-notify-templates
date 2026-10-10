@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Changed
+- **Breaking for subclasses:** `getMessengerBody()`, `getMessengerButtons()` and `getMessengerButtonsColumns()` got an optional `string $slot = 'messenger'` parameter. An override without it fails with "Declaration must be compatible" — add the parameter to the override, see [Upgrading](docs/upgrading.md)
+
+### Added
+- `channel_options` config key: per-channel `label`, template `slot` and any extra keys (icon, …) for an admin UI
+- `slot_options` config key: per-slot `label`, `subject` and any extra keys (rows, max length, …) for the template edit form and preview
+- `getSlots()` and `getSlot()` on the manager and facade
+- Per-channel messenger text: `getMessengerBody()`, `getMessengerButtons()` and `getMessengerButtonsColumns()` take an optional `$slot`. A channel with its own slot (`channel_options.telegram.slot = 'telegram'`) reads its row when it has a body, otherwise the shared `messenger` row; buttons fall back per option the same way. `resolveMessengerTemplate()` on the manager. Without a slot argument nothing changes
+- `getChannels()`, `getChannel()` and `getTypeSlots()` on the manager and facade — which channels exist, how to show them and which template slots a type renders, without hard-coding `if ($channel === 'messenger')` in the UI
+
 ## [0.12.6] - 2026-10-07
 
 ### Fixed

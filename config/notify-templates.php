@@ -24,6 +24,36 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Channel metadata for the admin UI, keyed by a slug from `channels`.
+    | Every key is optional:
+    |   label — display name; default: the slug with an upper-case first letter
+    |   slot  — template slot the channel renders; default: 'mail' for mail,
+    |           'messenger' for the rest (what getMessengerBody() reads)
+    | Any other key (icon, color, …) is passed through getChannels() as is.
+    |--------------------------------------------------------------------------
+    */
+    'channel_options' => [
+        'mail' => ['label' => 'Email'],
+        'sms' => ['label' => 'SMS'],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Template slot metadata for the admin UI, keyed by slot (`slot` of a channel).
+    | Every key is optional:
+    |   label   — display name; default: the slot with an upper-case first letter
+    |   subject — the slot has a subject line; default: true for mail only
+    | Any other key (rows, max_length, html, …) is passed through getSlot() as is.
+    |--------------------------------------------------------------------------
+    */
+    'slot_options' => [
+        'mail' => ['label' => 'Email'],
+        'messenger' => ['label' => 'Messenger'],
+        'sms' => ['label' => 'SMS'],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Default channels used when subscription has no channels configured.
     | Also the guaranteed-delivery fallback in via(), but only for types with
     | 'user_configurable' => false (e.g. OTP) — for regular types an empty

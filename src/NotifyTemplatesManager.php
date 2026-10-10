@@ -129,6 +129,84 @@ class NotifyTemplatesManager
         return ($type['channels'] ?? []) ?: config('notify-templates.channels', []);
     }
 
+    /**
+     * Template slots a notify type renders — the distinct slots of its channels, in channel order.
+     *
+     * @return list<string>
+     */
+    public function getTypeSlots(string $notifyKey): array
+    {
+        return array_values(array_unique(array_map(
+            fn(string $channel) => $this->getChannel($channel)['slot'],
+            $this->getTypeChannels($notifyKey),
+        )));
+    }
+
+    // -------------------------------------------------------------------------
+    // Channel registry
+    // -------------------------------------------------------------------------
+
+    /**
+     * Every channel of config('notify-templates.channels') with its metadata, keyed by slug.
+     *
+     * @return array<string, array{key: string, label: string, slot: string}>
+     */
+    public function getChannels(): array
+    {
+        $channels = [];
+
+        foreach (config('notify-templates.channels', []) as $channel) {
+            $channels[$channel] = $this->getChannel($channel);
+        }
+
+        return $channels;
+    }
+
+    /**
+     * Template slots of every configured channel with their metadata, keyed by slot, in channel order.
+     *
+     * @return array<string, array{key: string, label: string, subject: bool}>
+     */
+    public function getSlots(): array
+    {
+        $slots = [];
+
+        foreach ($this->getChannels() as $channel) {
+            $slots[$channel['slot']] ??= $this->getSlot($channel['slot']);
+        }
+
+        return $slots;
+    }
+
+    /**
+     * Metadata of one template slot: config('notify-templates.slot_options') over the defaults.
+     *
+     * @return array{key: string, label: string, subject: bool}
+     */
+    public function getSlot(string $slot): array
+    {
+        return array_replace(
+            ['label' => ucfirst($slot), 'subject' => $slot === 'mail'],
+            config("notify-templates.slot_options.{$slot}", []),
+            ['key' => $slot],
+        );
+    }
+
+    /**
+     * Metadata of one channel: config('notify-templates.channel_options') over the defaults.
+     * Works for a slug missing from `channels` too — the defaults alone.
+     *
+     * @return array{key: string, label: string, slot: string}
+     */
+    public function getChannel(string $channel): array
+    {
+        return array_replace(
+            ['label' => ucfirst($channel), 'slot' => $channel === 'mail' ? 'mail' : 'messenger'],
+            config("notify-templates.channel_options.{$channel}", []),
+            ['key' => $channel],
+        );
+    }
+
     // -------------------------------------------------------------------------
     // Tenant resolution
     // -------------------------------------------------------------------------
@@ -187,6 +265,29 @@ class NotifyTemplatesManager
      * @param array|null $type  typeDefinition() of the notify; defaults to the registered type
      * @return list<array{text: string|array<string, string>, url: string}>
      */
+    /**
+     * Template of a messenger slot: the slot's own row when it has a body, otherwise the `messenger` row.
+     * One channel (`'slot' => 'telegram'` in channel_options) can override the shared messenger text
+     * without duplicating every template; an empty override is no override.
+     */
+    public function resolveMessengerTemplate(
+        string $notifyKey,
+        string $slot = 'messenger',
+        ?string $roleKey = null,
+        ?string $tenantId = null,
+    ): ?NotifyTemplateModel {
+        if ($slot !== 'messenger') {
+            $template = $this->resolveTemplate($notifyKey, $slot, $roleKey, $tenantId);
+
+            // resolve() matches channel-less rows too — those are the shared fallback, not this slot's override
+            if ($template?->channel === $slot && trim((string) $template->body) !== '') {
+                return $template;
+            }
+        }
+
+        return $this->resolveTemplate($notifyKey, 'messenger', $roleKey, $tenantId);
+    }
+
     public function resolveButtons(
         string $notifyKey,
         ?string $roleKey = null,
@@ -194,7 +295,7 @@ class NotifyTemplatesManager
         string $channel = 'messenger',
         ?array $type = null,
     ): array {
-        $buttons = $this->resolveTemplate($notifyKey, $channel, $roleKey, $tenantId)?->getOption('buttons');
+        $buttons = $this->messengerOption($notifyKey, $channel, $roleKey, $tenantId, 'buttons');
 
         if (!is_array($buttons)) {
             $type ??= $this->getType($notifyKey) ?? [];
@@ -236,10 +337,25 @@ class NotifyTemplatesManager
         string $channel = 'messenger',
         ?array $type = null,
     ): int {
-        $columns = $this->resolveTemplate($notifyKey, $channel, $roleKey, $tenantId)?->getOption('buttons_columns');
+        $columns = $this->messengerOption($notifyKey, $channel, $roleKey, $tenantId, 'buttons_columns');
         $columns ??= ($type ?? $this->getType($notifyKey) ?? [])['buttons_columns'] ?? 1;
 
         return max(1, (int) $columns);
+    }
+
+    // Option of the slot's own row, then of the `messenger` row — buttons set on the shared text keep
+    // working for a channel whose override only changes the body
+    private function messengerOption(string $notifyKey, string $slot, ?string $roleKey, ?string $tenantId, string $key): mixed
+    {
+        if ($slot !== 'messenger') {
+            $template = $this->resolveTemplate($notifyKey, $slot, $roleKey, $tenantId);
+
+            if ($template?->channel === $slot && ($value = $template->getOption($key)) !== null) {
+                return $value;
+            }
+        }
+
+        return $this->resolveTemplate($notifyKey, 'messenger', $roleKey, $tenantId)?->getOption($key);
     }
 
     // -------------------------------------------------------------------------

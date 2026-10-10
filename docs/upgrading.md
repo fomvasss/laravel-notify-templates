@@ -11,6 +11,21 @@ php artisan migrate
 
 and compare your published `config/notify-templates.php` with the package's: nested arrays (`tables`, `models`, `log`) are not merged, so new keys must be copied in by hand.
 
+## Unreleased — slot parameter of the messenger helpers
+
+`getMessengerBody()`, `getMessengerButtons()` and `getMessengerButtonsColumns()` take an optional `$slot` (see [per-channel text](usage/templates.md#per-channel-text)). PHP requires an override to accept it too, otherwise the class fails to load:
+
+```php
+// before
+protected function getMessengerBody(mixed $notifiable): string
+// after
+protected function getMessengerBody(mixed $notifiable, string $slot = 'messenger'): string
+```
+
+Same for `getMessengerButtons(mixed $notifiable, string $slot = 'messenger')` and `getMessengerButtonsColumns(string $slot = 'messenger')`. Without per-channel slots in `channel_options` the value is always `'messenger'` and the override can ignore it.
+
+New config keys `channel_options` and `slot_options` are optional; a published config works without them.
+
 ## 0.12.4 — discovered keys are checked
 
 Discovery now throws `LogicException` at boot for a class whose `typeDefinition()['key']` differs from its `notifyKey()` — such a type already lost its settings, `user_configurable` and buttons at send time. Run `php artisan about` (or any command) locally before deploying: the message names the class. Fix it by overriding `notifyKey()` to return the stored key, so rows in `notify_*` tables keep matching.

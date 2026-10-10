@@ -39,9 +39,9 @@
 | `prepareText(string $text, mixed $notifiable)` | `string` | Token substitution hook. Default: returns `$text` unchanged |
 | `mapChannel(string $channel, mixed $notifiable)` | `?string` | Slug → Laravel channel, or `null` to drop. Built-in: `mail` when the notifiable has a mail route (`routeNotificationFor('mail')`, else `$notifiable->email`), `database`, `broadcast`. See [Custom channels](../usage/custom-channels.md) |
 | `resolveTemplate(string $channel)` | `?NotifyTemplate` | Template row for a slot with this notification's key, role and tenant |
-| `getMessengerBody(mixed $notifiable)` | `string` | `messenger` slot → `mail` slot → `defaults.mail.body`, through `prepareText()` |
-| `getMessengerButtons(mixed $notifiable)` | `array` | `[['text' => string, 'url' => string], ...]` — localized, through `prepareText()`, unsendable urls dropped |
-| `getMessengerButtonsColumns()` | `int` | Buttons per row |
+| `getMessengerBody(mixed $notifiable, string $slot = 'messenger')` | `string` | `$slot` row with a body → `messenger` slot → `mail` slot → `defaults.mail.body`, through `prepareText()`; see [per-channel text](../usage/templates.md#per-channel-text) |
+| `getMessengerButtons(mixed $notifiable, string $slot = 'messenger')` | `array` | `[['text' => string, 'url' => string], ...]` — localized, through `prepareText()`, unsendable urls dropped |
+| `getMessengerButtonsColumns(string $slot = 'messenger')` | `int` | Buttons per row |
 | `isSendableButtonUrl(string $url)` | `bool` | Absolute `http(s)` url whose host has a dot and doesn't end in `.test`, `.local`, `.localhost` |
 | `manager()` | `NotifyTemplatesManager` | The singleton |
 

@@ -14,6 +14,8 @@
 | `tables.notify_user_settings` | `notify_user_settings` | Table of the `NotifyUserSetting` model |
 | `tables.notify_logs` | `notify_logs` | Table of the `NotifyLog` model |
 | `channels` | `['mail', 'telegram', 'sms', 'database', 'broadcast']` | Channel slugs offered in your admin UI; fallback of `getTypeChannels()` when a type defines no `channels` |
+| `channel_options` | `mail`, `sms` labels | Per-channel metadata for the admin UI: `label`, template `slot`, any extra keys |
+| `slot_options` | `mail`, `messenger`, `sms` labels | Per-slot metadata for the admin UI: `label`, `subject`, any extra keys |
 | `default_channels` | `['mail']` | Channels used when an active subscription has an empty `channels` list, and the guaranteed-delivery fallback for non-configurable types |
 | `tenant_id` | `null` | Tenant used when no tenant is passed explicitly: `null`, a string, or a callable returning one |
 | `types` | `[]` | Notify types registered from config, in addition to discovered ones |
@@ -35,6 +37,46 @@ Only the models read these names. The published migrations create tables with th
 ## channels
 
 The package does not validate anything against this list. It is what `NotifyTemplates::getTypeChannels($key)` returns for a type without its own `channels`, meant for the channel checkboxes of a subscription form. It has no effect on which channels a notification is actually sent through — see [Channel resolution](usage/channels.md).
+
+## channel_options
+
+Metadata of the slugs from `channels`, read by `getChannels()` / `getChannel()` for an admin UI — a matrix header, an icon next to a toggle, a preview tab per template slot. Nothing here affects sending.
+
+```php
+'channel_options' => [
+    'mail' => ['label' => 'Email', 'icon' => 'fas fa-envelope'],
+    'telegram' => ['icon' => 'fab fa-telegram'],
+    'sms' => ['label' => 'SMS', 'slot' => 'sms'],
+],
+```
+
+| Key | Default | Meaning |
+|---|---|---|
+| `label` | slug with an upper-case first letter | Display name |
+| `slot` | `mail` for `mail`, `messenger` for the rest | Template slot the channel renders. A slot of its own lets the channel override the shared messenger text — pass it to `getMessengerBody()`, see [per-channel text](usage/templates.md#per-channel-text) |
+| anything else | — | Returned as is |
+
+A channel without an entry gets the defaults, so a new slug needs no entry at all.
+
+## slot_options
+
+Metadata of template slots — the `slot` of a channel — read by `getSlots()` / `getSlot()`. A slot is the template an admin edits; several channels can share one (`telegram` and `whatsapp` both render `messenger`). Keep what the edit form and the preview need here instead of `if ($slot === 'mail')` in the views:
+
+```php
+'slot_options' => [
+    'mail' => ['label' => 'Email', 'html' => true, 'rows' => 30],
+    'messenger' => ['label' => 'Messenger', 'rows' => 6],
+    'sms' => ['label' => 'SMS', 'max_length' => 160],
+],
+```
+
+| Key | Default | Meaning |
+|---|---|---|
+| `label` | slot with an upper-case first letter | Display name — a tab or card title |
+| `subject` | `true` for `mail`, `false` for the rest | The slot has a subject line |
+| anything else | — | Returned as is |
+
+Nothing here affects sending.
 
 ## default_channels
 

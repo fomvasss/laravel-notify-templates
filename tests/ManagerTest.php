@@ -147,4 +147,80 @@ class ManagerTest extends TestCase
 
         $this->assertSame(['mail', 'telegram'], $this->manager->getTypeChannels('OrderOrdered'));
     }
+
+    public function test_get_channel_defaults(): void
+    {
+        config(['notify-templates.channel_options' => []]);
+
+        $this->assertSame(['label' => 'Mail', 'slot' => 'mail', 'key' => 'mail'], $this->manager->getChannel('mail'));
+        $this->assertSame(['label' => 'Viber', 'slot' => 'messenger', 'key' => 'viber'], $this->manager->getChannel('viber'));
+    }
+
+    public function test_get_channel_merges_options(): void
+    {
+        config(['notify-templates.channel_options' => [
+            'sms' => ['label' => 'SMS', 'slot' => 'sms', 'icon' => 'fas fa-sms', 'key' => 'ignored'],
+        ]]);
+
+        $this->assertSame(
+            ['label' => 'SMS', 'slot' => 'sms', 'icon' => 'fas fa-sms', 'key' => 'sms'],
+            $this->manager->getChannel('sms'),
+        );
+    }
+
+    public function test_get_channels_keyed_by_slug_in_config_order(): void
+    {
+        config([
+            'notify-templates.channels' => ['telegram', 'mail'],
+            'notify-templates.channel_options' => ['telegram' => ['icon' => 'fab fa-telegram']],
+        ]);
+
+        $channels = $this->manager->getChannels();
+
+        $this->assertSame(['telegram', 'mail'], array_keys($channels));
+        $this->assertSame('fab fa-telegram', $channels['telegram']['icon']);
+        $this->assertSame('messenger', $channels['telegram']['slot']);
+    }
+
+    public function test_get_slot_defaults(): void
+    {
+        config(['notify-templates.slot_options' => []]);
+
+        $this->assertSame(['label' => 'Mail', 'subject' => true, 'key' => 'mail'], $this->manager->getSlot('mail'));
+        $this->assertSame(['label' => 'Messenger', 'subject' => false, 'key' => 'messenger'], $this->manager->getSlot('messenger'));
+    }
+
+    public function test_get_slot_merges_options(): void
+    {
+        config(['notify-templates.slot_options' => ['sms' => ['label' => 'SMS', 'max_length' => 160]]]);
+
+        $this->assertSame(['label' => 'SMS', 'subject' => false, 'max_length' => 160, 'key' => 'sms'], $this->manager->getSlot('sms'));
+    }
+
+    public function test_get_slots_distinct_from_channels(): void
+    {
+        config([
+            'notify-templates.channels' => ['telegram', 'mail', 'viber'],
+            'notify-templates.channel_options' => [],
+            'notify-templates.slot_options' => ['messenger' => ['label' => 'Месенджер']],
+        ]);
+
+        $slots = $this->manager->getSlots();
+
+        $this->assertSame(['messenger', 'mail'], array_keys($slots));
+        $this->assertSame('Месенджер', $slots['messenger']['label']);
+    }
+
+    public function test_get_type_slots_distinct_in_channel_order(): void
+    {
+        config(['notify-templates.channel_options' => ['sms' => ['slot' => 'sms']]]);
+        $this->manager->registerType([
+            'key' => 'OrderOrdered',
+            'name' => 'Замовлення',
+            'group' => 'order',
+            'channels' => ['telegram', 'mail', 'viber', 'sms'],
+        ]);
+
+        $this->assertSame(['messenger', 'mail', 'sms'], $this->manager->getTypeSlots('OrderOrdered'));
+    }
 }
