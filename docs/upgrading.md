@@ -11,7 +11,7 @@ php artisan migrate
 
 and compare your published `config/notify-templates.php` with the package's: nested arrays (`tables`, `models`, `log`) are not merged, so new keys must be copied in by hand.
 
-## Unreleased — slot parameter of the messenger helpers
+## 0.13 — slot parameter of the messenger helpers
 
 `getMessengerBody()`, `getMessengerButtons()` and `getMessengerButtonsColumns()` take an optional `$slot` (see [per-channel text](usage/templates.md#per-channel-text)). PHP requires an override to accept it too, otherwise the class fails to load:
 

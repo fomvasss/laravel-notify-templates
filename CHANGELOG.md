@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-10-10
+
 ### Changed
 - **Breaking for subclasses:** `getMessengerBody()`, `getMessengerButtons()` and `getMessengerButtonsColumns()` got an optional `string $slot = 'messenger'` parameter. An override without it fails with "Declaration must be compatible" — add the parameter to the override, see [Upgrading](docs/upgrading.md)
 
